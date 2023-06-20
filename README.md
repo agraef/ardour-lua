@@ -1,6 +1,6 @@
 # Ardour Lua Scripts
 
-Here are some Lua scripts I wrote for an Ardour course. These require a fairly recent Ardour version (tested with Ardour 7.4). The simple_arp.lua script needs Ardour from git (7.4.291), since it relies on the new time_info data for dsp scripts.
+Here are some Lua scripts I wrote for an Ardour course. These require a fairly recent Ardour version (tested with Ardour 7.4). The simple_arp.lua script needs Ardour from git (7.4.291), since it relies on the [new time_info data](https://discourse.ardour.org/t/lua-arpeggiator-plugin-anyone/108862) for dsp scripts.
 
 Documentation still needs to be written, so you'll have to take a look at the scripts themselves for further details. Below is just a quick rundown of the scripts that are currently available.
 
