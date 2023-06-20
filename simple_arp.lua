@@ -71,6 +71,7 @@ end
 local debug = 1
 
 local chan = 0 -- MIDI output channel
+local last_rolling -- last transport status, to detect changes
 local last_beat -- last beat number
 local last_num -- last note
 local last_chan -- MIDI channel of last note
@@ -88,18 +89,21 @@ function dsp_run (_, _, n_samples)
    local ctrl = CtrlPorts:array ()
    local subdiv, up, down, mode = ctrl[1], ctrl[2], ctrl[3], ctrl[4]
    local vel1, vel2, vel3 = ctrl[5], ctrl[6], ctrl[7]
-   local change = false
+   local rolling = Session:transport_rolling ()
+   local changed = false
 
    if up ~= last_up or down ~= last_down or mode ~= last_mode then
       last_up = up
       last_down = down
       last_mode = mode
-      change = true
+      changed = true
    end
 
    for k,ev in ipairs (midiin) do
-      -- uncomment to pass through input notes
-      --midiout[k] = ev
+      if not rolling then
+	 -- pass through input notes
+	 midiout[k] = ev
+      end
       local status, num, val = table.unpack(ev.data)
       local ch = status & 0xf
       status = status & 0xf0
@@ -108,18 +112,18 @@ function dsp_run (_, _, n_samples)
 	    print("note off", num, val)
 	 end
 	 chord[num] = nil
-	 change = true
+	 changed = true
       elseif status == 0x90 then
 	 if debug >= 4 then
 	    print("note on", num, val, "ch", ch)
 	 end
 	 chord_index = chord_index+1
 	 chord[num] = chord_index
-	 change = true
+	 changed = true
 	 chan = ch
       end
    end
-   if change then
+   if changed then
       -- update the pattern
       pattern = {}
       for num, val in pairs(chord) do
@@ -188,10 +192,26 @@ function dsp_run (_, _, n_samples)
 	 index = 0 -- reset pattern to the start
       else
 	 chord_index = 0 -- pattern is empty, reset the chord index
+	 if debug >= 2 then
+	    print("pattern: <empty>")
+	 end
       end
    end
 
-   if Session:transport_rolling () then
+   local k = #midiout + 1
+   if last_rolling ~= rolling then
+      last_rolling = rolling
+      -- transport change, send all-notes off (we only do this when transport
+      -- starts rolling, to silence any notes that may have been passed
+      -- through beforehand; note that Ardour automatically sends
+      -- all-notes-off to all MIDI channels anyway when transport is stopped)
+      if rolling then
+	 midiout[k] = { time = 1, data = { 0xb0+chan, 123, 0 } }
+	 k = k+1
+      end
+   end
+
+   if rolling then
       -- If transport is rolling, check whether a beat is due, so that we
       -- trigger the next note. We want to do this in a sample-accurate manner
       -- in order to avoid jitter, which makes things a little complicated.
@@ -235,7 +255,6 @@ function dsp_run (_, _, n_samples)
 	 local meter = tm:meter_at (pos)
 	 local tempo = tm:tempo_at (pos)
 	 local n = #pattern
-	 local k = 1
 	 ts = ts - time.sample + 1
 	 if debug >= 1 then
 	    -- print some debugging information: bbt, fractional beat number,
