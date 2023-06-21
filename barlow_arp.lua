@@ -25,12 +25,6 @@ Explanation of the controls:
 -- (a.k.a. septuplets) are supported, but if you really need more, then you
 -- may also just change the time signature accordingly.
 
--- TODO: At present, recomputing all the necessary tables for the Barlow meter
--- is a fairly cpu-intensive operation, so changing the time signature
--- mid-flight might cause cpu spikes and thus x-runs. In the future, we can
--- hopefully avoid this by looking ahead for meter changes and offload the
--- necessary computations to a background thread.
-
 function dsp_ioconfig ()
    return { { midi_in = 1, midi_out = 1, audio_in = -1, audio_out = -1}, }
 end
@@ -312,8 +306,45 @@ function Meter:pulse(f)
    end
 end
 
-local last_mval
-local barlow_meter = Meter:new()
+-- NOTE: Computing the necessary tables for the Barlow meter is a fairly
+-- cpu-intensive operation, so changing the time signature mid-flight might
+-- cause some cpu spikes and thus x-runs. To mitigate this, we cache each
+-- meter as soon as we first encounter it, so that no costly recomputations
+-- are needed later. An initial scan of the timeline makes sure that the cache
+-- is well-populated from the get-go.
+
+local last_mdiv
+-- cached Barlow meters
+local barlow_meters = { [4] = Meter:new() } -- common time
+-- current Barlow meter
+local barlow_meter = barlow_meters[4]
+
+function dsp_init (rate)
+   local loc = Session:locations():session_range_location()
+   if loc then
+      local tm = Temporal.TempoMap.read ()
+      local a, b = loc:start():beats(), loc:_end():beats()
+      if debug >= 1 then
+	 print(loc:name(), a, b)
+      end
+      -- Scan through the timeline to find all time signatures and cache the
+      -- resulting Barlow meters. Note that only care about the number of
+      -- divisions here, that's all the algorithm needs.
+      while a <= b do
+	 local m = tm:meter_at_beats(a)
+	 local mdiv = m:divisions_per_bar()
+	 if not barlow_meters[mdiv] then
+	    if debug >= 1 then
+	       print(math.floor(a), string.format("%d/%d", mdiv, m:note_value()))
+	    end
+	    barlow_meters[mdiv] = Meter:new(mdiv)
+	 end
+	 a = a:next_beat()
+      end
+   elseif debug >= 1 then
+      print("empty session")
+   end
+end
 
 function dsp_run (_, _, n_samples)
    assert (type(midiout) == "table")
@@ -545,10 +576,16 @@ function dsp_run (_, _, n_samples)
 	    local p = bbt.beats-1 + bbt.ticks / Temporal.ticks_per_beat
 	    -- Detect meter changes and update the Barlow meter object
 	    -- accordingly.
-	    local mval = meter:divisions_per_bar()
-	    if mval ~= last_mval then
-	       barlow_meter:compute (mval)
-	       last_mval = mval
+	    local mdiv = meter:divisions_per_bar()
+	    if mdiv ~= last_mdiv then
+	       if not barlow_meters[mdiv] then
+		  if debug >= 1 then
+		     print(math.floor(bt), string.format("%d/%d", mdiv, meter:note_value()))
+		  end
+		  barlow_meters[mdiv] = Meter:new(mdiv)
+	       end
+	       barlow_meter = barlow_meters[mdiv]
+	       last_mdiv = mdiv
 	    end
 	    -- Use the algorithm to determine the pulse weight.
 	    local w, npulses = barlow_meter:pulse (p)
