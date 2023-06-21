@@ -19,8 +19,8 @@ Explanation of the controls:
 -- Copyright (c) 2023 Albert Gräf, GPLv3+
 
 -- This is basically the same as simple_arp.lua (which see), but computes note
--- velocities using the Barlow indispensability formula which can deal with
--- any time signature whatsoever.
+-- velocities using the Barlow indispensability formula which produces more
+-- detailed rhythmic accents and handles arbitrary time signatures with ease.
 
 -- TODO: At present, recomputing all the necessary tables for the Barlow meter
 -- is a fairly cpu-intensive operation, so changing the time signature

@@ -23,8 +23,13 @@ Explanation of the controls:
 -- are triggered at each beat as transport is rolling. The plugin adjusts to
 -- the current time signature, and also lets you subdivide the base pulse of
 -- the meter with a control parameter in the setup. Note velocities for the
--- different levels (bar, beat, subdivision pulses) can be adjusted in the
--- setup as well.
+-- different levels can be adjusted in the setup as well.
+
+-- NOTE: The scheme for varying note velocities in order to create rhythmic
+-- accents is a bit on the simplistic side and only provides three distinct
+-- velocity levels (bar, beat, and subdivision pulses). See barlow_arp.lua for
+-- a more sophisticated implementation which uses Barlow's indispensability
+-- formula.
 
 -- The octave range can be adjusted up and down in the setup, notes from the
 -- input chord are then repeated in the lower and/or upper octaves. The usual
