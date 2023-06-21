@@ -87,8 +87,10 @@ function dsp_run (_, _, n_samples)
    assert (type(midiout) == "table")
 
    local ctrl = CtrlPorts:array ()
-   local subdiv, up, down, mode = ctrl[1], ctrl[2], ctrl[3], ctrl[4]
-   local vel1, vel2, vel3 = ctrl[5], ctrl[6], ctrl[7]
+   -- We need to make sure that these are integer values. (The GUI enforces
+   -- this, but fractional values may occur through automation.)
+   local subdiv, up, down, mode = math.floor(ctrl[1]), math.floor(ctrl[2]), math.floor(ctrl[3]), math.floor(ctrl[4])
+   local vel1, vel2, vel3 = math.floor(ctrl[5]), math.floor(ctrl[6]), math.floor(ctrl[7])
    local rolling = Session:transport_rolling ()
    local changed = false
 
