@@ -335,7 +335,7 @@ function dsp_init (rate)
 	 local mdiv = m:divisions_per_bar()
 	 if not barlow_meters[mdiv] then
 	    if debug >= 1 then
-	       print(math.floor(a), string.format("%d/%d", mdiv, m:note_value()))
+	       print(a, string.format("%d/%d", mdiv, m:note_value()))
 	    end
 	    barlow_meters[mdiv] = Meter:new(mdiv)
 	 end
@@ -580,7 +580,7 @@ function dsp_run (_, _, n_samples)
 	    if mdiv ~= last_mdiv then
 	       if not barlow_meters[mdiv] then
 		  if debug >= 1 then
-		     print(math.floor(bt), string.format("%d/%d", mdiv, meter:note_value()))
+		     print(bt, string.format("%d/%d", mdiv, meter:note_value()))
 		  end
 		  barlow_meters[mdiv] = Meter:new(mdiv)
 	       end
