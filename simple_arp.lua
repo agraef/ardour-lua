@@ -12,6 +12,7 @@ Explanation of the controls:
 - Octave up/down: Sets the octave range for the output.
 - Pattern: Choose any of the usual arpeggiator patterns (up, down, random, etc.).
 - Velocity 1-3: Automatic note velocities for the different beat levels (bar, beat, subdivision pulse).
+- Latch: Enable latch mode (keep playing with no input).
 ]]
 }
 
@@ -29,7 +30,9 @@ Explanation of the controls:
 -- input chord are then repeated in the lower and/or upper octaves. The usual
 -- pattern types are supported and can be selected in the setup: up, down,
 -- up-down (exclusive and inclusive modes), order (notes are played in the
--- order in which they are input), and random. All these parameters are
+-- order in which they are input), and random. A toggle in the setup lets you
+-- enable latch mode, in which the current pattern keeps playing if you
+-- release all keys, until you start a new chord. All these parameters are
 -- plugin controls which can be automated.
 
 -- Last but not least, the plugin listens on all MIDI channels, and the last
@@ -38,9 +41,6 @@ Explanation of the controls:
 -- channel (usually channel 10), without having to fiddle with Ardour's MIDI
 -- track parameters, provided that your MIDI controller can send data on the
 -- appropriate MIDI channel.
-
--- TODO: Latch and hold modes. At present, if you release all keys, the
--- arpeggiator stops playing immediately.
 
 function dsp_ioconfig ()
    return { { midi_in = 1, midi_out = 1, audio_in = -1, audio_out = -1}, }
@@ -62,6 +62,7 @@ function dsp_params ()
 	 { type = "input", name = "Velocity 1", min = 0, max = 127, default = 100, integer = true },
 	 { type = "input", name = "Velocity 2", min = 0, max = 127, default = 80, integer = true },
 	 { type = "input", name = "Velocity 3", min = 0, max = 127, default = 60, integer = true },
+	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true }
       }
 end
 
@@ -78,6 +79,7 @@ local last_chan -- MIDI channel of last note
 local last_up, last_down, last_mode -- previous params, to detect changes
 local chord = {} -- current chord (note store)
 local chord_index = 0 -- index of last chord note (0 if none)
+local latched = {} -- latched notes
 local pattern = {} -- current pattern
 local index = 0 -- current pattern index (reset when pattern changes)
 
@@ -91,6 +93,7 @@ function dsp_run (_, _, n_samples)
    -- this, but fractional values may occur through automation.)
    local subdiv, up, down, mode = math.floor(ctrl[1]), math.floor(ctrl[2]), math.floor(ctrl[3]), math.floor(ctrl[4])
    local vel1, vel2, vel3 = math.floor(ctrl[5]), math.floor(ctrl[6]), math.floor(ctrl[7])
+   local latch = ctrl[8] > 0
    local rolling = Session:transport_rolling ()
    local changed = false
 
@@ -98,6 +101,11 @@ function dsp_run (_, _, n_samples)
       last_up = up
       last_down = down
       last_mode = mode
+      changed = true
+   end
+
+   if not latch and next(latched) ~= nil then
+      latched = {}
       changed = true
    end
 
@@ -113,11 +121,20 @@ function dsp_run (_, _, n_samples)
 	 if debug >= 4 then
 	    print("note off", num, val)
 	 end
+	 -- keep track of latched notes
+	 if latch then
+	    latched[num] = chord[num]
+	 else
+	    changed = true
+	 end
 	 chord[num] = nil
-	 changed = true
       elseif status == 0x90 then
 	 if debug >= 4 then
 	    print("note on", num, val, "ch", ch)
+	 end
+	 if next(chord) == nil then
+	    -- new pattern, get rid of latched notes
+	    latched = {}
 	 end
 	 chord_index = chord_index+1
 	 chord[num] = chord_index
@@ -138,6 +155,22 @@ function dsp_run (_, _, n_samples)
 	 for i = 1, up do
 	    if num+i*12 <= 127 then
 	       table.insert(pattern, num+i*12)
+	    end
+	 end
+      end
+      if latch then
+	 -- add any latched notes
+	 for num, val in pairs(latched) do
+	    table.insert(pattern, num)
+	    for i = 1, down do
+	       if num-i*12 >= 0 then
+		  table.insert(pattern, num-i*12)
+	       end
+	    end
+	    for i = 1, up do
+	       if num+i*12 <= 127 then
+		  table.insert(pattern, num+i*12)
+	       end
 	    end
 	 end
       end
