@@ -21,6 +21,9 @@ Explanation of the controls:
 -- This is basically the same as simple_arp.lua (which see), but computes note
 -- velocities using the Barlow indispensability formula which produces more
 -- detailed rhythmic accents and handles arbitrary time signatures with ease.
+-- NOTE: A limitation of the present algorithm is that only subdivisions <= 7
+-- (a.k.a. septuplets) are supported, but if you really need more, then you
+-- may also just change the time signature accordingly.
 
 -- TODO: At present, recomputing all the necessary tables for the Barlow meter
 -- is a fairly cpu-intensive operation, so changing the time signature
@@ -39,7 +42,7 @@ end
 function dsp_params ()
    return
       {
-	 { type = "input", name = "Division", min = 1, max = 16, default = 1, integer = true },
+	 { type = "input", name = "Division", min = 1, max = 7, default = 1, integer = true },
 	 { type = "input", name = "Octave up", min = 0, max = 5, default = 0, integer = true },
 	 { type = "input", name = "Octave down", min = 0, max = 5, default = 0, integer = true },
 	 { type = "input", name = "Pattern", min = 1, max = 6, default = 1, integer = true,
