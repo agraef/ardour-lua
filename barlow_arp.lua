@@ -545,7 +545,7 @@ function dsp_run (_, _, n_samples)
 	    local p = bbt.beats-1 + bbt.ticks / Temporal.ticks_per_beat
 	    -- Detect meter changes and update the Barlow meter object
 	    -- accordingly.
-	    local mval = meter:note_value()
+	    local mval = meter:divisions_per_bar()
 	    if mval ~= last_mval then
 	       barlow_meter:compute (mval)
 	       last_mval = mval
