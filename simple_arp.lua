@@ -137,15 +137,18 @@ function dsp_run (_, _, n_samples)
 	 if debug >= 4 then
 	    print("note on", num, val, "ch", ch)
 	 end
-	 if next(chord) == nil then
+	 if latch and next(chord) == nil then
 	    -- new pattern, get rid of latched notes
 	    latched = {}
 	 end
 	 chord_index = chord_index+1
 	 chord[num] = chord_index
-	 -- avoid double notes in latch mode
-	 latched[num] = nil
-	 changed = true
+	 if latch and latched[num] then
+	    -- avoid double notes in latch mode
+	    latched[num] = nil
+	 else
+	    changed = true
+	 end
 	 chan = ch
       end
    end
