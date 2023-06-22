@@ -143,6 +143,8 @@ function dsp_run (_, _, n_samples)
 	 end
 	 chord_index = chord_index+1
 	 chord[num] = chord_index
+	 -- avoid double notes in latch mode
+	 latched[num] = nil
 	 changed = true
 	 chan = ch
       end
@@ -166,17 +168,15 @@ function dsp_run (_, _, n_samples)
       if latch then
 	 -- add any latched notes
 	 for num, val in pairs(latched) do
-	    if not chord[num] then -- avoid double notes
-	       table.insert(pattern, num)
-	       for i = 1, down do
-		  if num-i*12 >= 0 then
-		     table.insert(pattern, num-i*12)
-		  end
+	    table.insert(pattern, num)
+	    for i = 1, down do
+	       if num-i*12 >= 0 then
+		  table.insert(pattern, num-i*12)
 	       end
-	       for i = 1, up do
-		  if num+i*12 <= 127 then
-		     table.insert(pattern, num+i*12)
-		  end
+	    end
+	    for i = 1, up do
+	       if num+i*12 <= 127 then
+		  table.insert(pattern, num+i*12)
 	       end
 	    end
 	 end
@@ -218,17 +218,15 @@ function dsp_run (_, _, n_samples)
 	    end
 	    if latch then
 	       for num, val in pairs(latched) do
-		  if not chord[num] then -- avoid double notes
-		     for i = 1, down do
-			if num-i*12 >= 0 then
-			   idx[num-i*12] = val - i*k
-			end
+		  for i = 1, down do
+		     if num-i*12 >= 0 then
+			idx[num-i*12] = val - i*k
 		     end
-		     idx[num] = val
-		     for i = 1, up do
-			if num+i*12 <= 127 then
-			   idx[num+i*12] = val + i*k
-			end
+		  end
+		  idx[num] = val
+		  for i = 1, up do
+		     if num+i*12 <= 127 then
+			idx[num+i*12] = val + i*k
 		     end
 		  end
 	       end
