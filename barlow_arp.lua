@@ -12,6 +12,7 @@ Explanation of the controls:
 - Octave up/down: Sets the octave range for the output.
 - Pattern: Choose any of the usual arpeggiator patterns (up, down, random, etc.).
 - Min and Max Velocity: Range for automatic note velocities.
+- Min and Max Filter: Pulse strength filter: Pulses outside the given pulse strength range (normalized values between 0 and 1) will be skipped.
 - Latch: Enable latch mode (keep playing with no input).
 ]]
 }
@@ -21,6 +22,10 @@ Explanation of the controls:
 -- This is basically the same as simple_arp.lua (which see), but computes note
 -- velocities using the Barlow indispensability formula which produces more
 -- detailed rhythmic accents and handles arbitrary time signatures with ease.
+-- It also offers a pulse filter which lets you filter notes by normalized
+-- pulse strengths. Any pulse with a strength below/above the given
+-- minimum/maximum values in the 0-1 range will be skipped.
+
 -- NOTE: A limitation of the present algorithm is that only subdivisions <= 7
 -- (a.k.a. septuplets) are supported, but if you really need more, then you
 -- may also just change the time signature accordingly.
@@ -44,6 +49,8 @@ function dsp_params ()
 	      {	["1 up"] = 1, ["2 down"] = 2, ["3 exclusive"] = 3, ["4 inclusive"] = 4, ["5 order"] = 5, ["6 random"] = 6 } },
 	 { type = "input", name = "Min Velocity", min = 0, max = 127, default = 60, integer = true },
 	 { type = "input", name = "Max Velocity", min = 0, max = 127, default = 120, integer = true },
+	 { type = "input", name = "Min Filter", min = 0, max = 1, default = 0 },
+	 { type = "input", name = "Max Filter", min = 0, max = 1, default = 1 },
 	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true }
       }
 end
@@ -356,8 +363,14 @@ function dsp_run (_, _, n_samples)
    -- this, but fractional values may occur through automation.)
    local subdiv, up, down, mode = math.floor(ctrl[1]), math.floor(ctrl[2]), math.floor(ctrl[3]), math.floor(ctrl[4])
    local minvel, maxvel = math.floor(ctrl[5]), math.floor(ctrl[6])
-   local latch = ctrl[7] > 0
+   -- these are floating point values in the 0-1 range
+   local minw, maxw = ctrl[7], ctrl[8]
+   -- latch toggle
+   local latch = ctrl[9] > 0
+   -- rolling state
    local rolling = Session:transport_rolling ()
+   -- whether the pattern must be recomputed, due to parameter changes or MIDI
+   -- input
    local changed = false
 
    if up ~= last_up or down ~= last_down or mode ~= last_mode then
@@ -594,21 +607,24 @@ function dsp_run (_, _, n_samples)
 	    if debug >= 4 then
 	       print(" Beat:", p, " Weight =", w, "/", npulses-1)
 	    end
-	    -- Normalize the weight and compute the velocity from that value.
+	    -- normalize the weight to the 0-1 range
 	    w = w/(npulses-1)
-	    local v = minvel + w * (maxvel-minvel)
-	    -- round to nearest integer
-	    v = math.floor(v+0.5)
-	    --print("p", p, "v", v)
-	    -- trigger the new note
-	    index = index%n + 1
-	    num = pattern[index]
-	    if debug >= 3 then
-	       print("note on", num, v)
+	    -- filter notes
+	    if w >= minw and w <= maxw then
+	       -- compute the velocity, round to nearest integer
+	       local v = minvel + w * (maxvel-minvel)
+	       v = math.floor(v+0.5)
+	       --print("p", p, "v", v)
+	       -- trigger the new note
+	       index = index%n + 1
+	       num = pattern[index]
+	       if debug >= 3 then
+		  print("note on", num, v)
+	       end
+	       midiout[k] = { time = ts, data = { 0x90+chan, num, v } }
+	       last_num = num
+	       last_chan = chan
 	    end
-	    midiout[k] = { time = ts, data = { 0x90+chan, num, v } }
-	    last_num = num
-	    last_chan = chan
 	 end
       end
    else
