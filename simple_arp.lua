@@ -152,22 +152,8 @@ function dsp_run (_, _, n_samples)
    if changed then
       -- update the pattern
       pattern = {}
-      for num, val in pairs(chord) do
-	 table.insert(pattern, num)
-	 for i = 1, down do
-	    if num-i*12 >= 0 then
-	       table.insert(pattern, num-i*12)
-	    end
-	 end
-	 for i = 1, up do
-	    if num+i*12 <= 127 then
-	       table.insert(pattern, num+i*12)
-	    end
-	 end
-      end
-      if latch then
-	 -- add any latched notes
-	 for num, val in pairs(latched) do
+      function pattern_from_chord(pattern, chord)
+	 for num, val in pairs(chord) do
 	    table.insert(pattern, num)
 	    for i = 1, down do
 	       if num-i*12 >= 0 then
@@ -180,6 +166,11 @@ function dsp_run (_, _, n_samples)
 	       end
 	    end
 	 end
+      end
+      pattern_from_chord(pattern, chord)
+      if latch then
+	 -- add any latched notes
+	 pattern_from_chord(pattern, latched)
       end
       table.sort(pattern) -- order by ascending notes (up pattern)
       local n = #pattern
@@ -203,21 +194,8 @@ function dsp_run (_, _, n_samples)
 	    local idx = {}
 	    -- build a table of indices which also includes octaves up and
 	    -- down, ordering them first by octave and then by index
-	    for num, val in pairs(chord) do
-	       for i = 1, down do
-		  if num-i*12 >= 0 then
-		     idx[num-i*12] = val - i*k
-		  end
-	       end
-	       idx[num] = val
-	       for i = 1, up do
-		  if num+i*12 <= 127 then
-		     idx[num+i*12] = val + i*k
-		  end
-	       end
-	    end
-	    if latch then
-	       for num, val in pairs(latched) do
+	    function index_from_chord(idx, chord)
+	       for num, val in pairs(chord) do
 		  for i = 1, down do
 		     if num-i*12 >= 0 then
 			idx[num-i*12] = val - i*k
@@ -230,6 +208,10 @@ function dsp_run (_, _, n_samples)
 		     end
 		  end
 	       end
+	    end
+	    index_from_chord(idx, chord)
+	    if latch then
+	       index_from_chord(idx, latched)
 	    end
 	    table.sort(pattern, function(a,b) return idx[a] < idx[b] end)
 	 elseif mode == 6 then
