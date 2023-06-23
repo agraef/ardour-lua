@@ -23,7 +23,7 @@ These are some helper scripts, mostly for doing twelve-tone music and similar se
 These are MIDI effects which can go as a plugin into a MIDI track. Currently the following scripts are available:
 
 - simple_arp.lua: A simple monophonic arpeggiator which takes chords as MIDI input and turns them into arpeggios when transport is rolling. Various controls let you modify parameters such as velocities, octave range, and pattern mode.
-- barlow_arp.lua: This is like simple_arp.lua, but uses the "indispensability" formula by contemporary composer Clarence Barlow (from his book "On Musiquantics", Section 22, "A Quantitative Approach to Metre") in order to compute more sophisticated pulse weights (from which the velocities are computed) for any kind of meter. It's also a bit heavier on the cpu (occasionally).
+- barlow_arp.lua: This is like simple_arp.lua, but uses the "indispensability" formula by contemporary composer Clarence Barlow (the same formula that's also used in meter.lua, see above) in order to compute more sophisticated pulse weights for any kind of meter. It produces more detailed rhythmic accents and includes a pulse filter. It's also a bit heavier on the cpu (occasionally).
 
 
 Copyright © 2023 by Albert Gräf \<<aggraef@gmail.com>\>, please check the individual files for license information (MIT means the MIT license, GPL the GNU Public License v3 or later; if no license is given, the file is in the public domain). Please also check my GitHub page at https://agraef.github.io/.
