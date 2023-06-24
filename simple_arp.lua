@@ -13,6 +13,7 @@ Explanation of the controls:
 - Pattern: Choose any of the usual arpeggiator patterns (up, down, random, etc.).
 - Velocity 1-3: Automatic note velocities for the different beat levels (bar, beat, subdivision pulse).
 - Latch: Enable latch mode (keep playing with no input).
+- Sync: Synchronize pattern playback with bars and beats.
 ]]
 }
 
@@ -35,10 +36,19 @@ Explanation of the controls:
 -- input chord are then repeated in the lower and/or upper octaves. The usual
 -- pattern types are supported and can be selected in the setup: up, down,
 -- up-down (exclusive and inclusive modes), order (notes are played in the
--- order in which they are input), and random. A toggle in the setup lets you
--- enable latch mode, in which the current pattern keeps playing if you
--- release all keys, until you start a new chord. All these parameters are
--- plugin controls which can be automated.
+-- order in which they are input), and random.
+
+-- A toggle in the setup lets you enable latch mode, in which the current
+-- pattern keeps playing if you release all keys, until you start a new
+-- chord. Another toggle enables sync mode, in which the pattern is properly
+-- synchronized to bars and beats, no matter where you change chords. This
+-- also works with patterns spanning multiple bars, and often creates a much
+-- smoother arpeggio than just cycling through the pattern (which is the
+-- default). Both latch and sync mode are especially helpful for imprecise
+-- players (like me) who tend to miss beats in chord changes.
+
+-- All these parameters are plugin controls which can be automated and saved
+-- in presets.
 
 -- Last but not least, the plugin listens on all MIDI channels, and the last
 -- MIDI channel used in the input also sets the MIDI channel for output. This
@@ -67,7 +77,8 @@ function dsp_params ()
 	 { type = "input", name = "Velocity 1", min = 0, max = 127, default = 100, integer = true },
 	 { type = "input", name = "Velocity 2", min = 0, max = 127, default = 80, integer = true },
 	 { type = "input", name = "Velocity 3", min = 0, max = 127, default = 60, integer = true },
-	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true }
+	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true },
+	 { type = "input", name = "Sync", min = 0, max = 1, default = 0, toggled = true },
       }
 end
 
@@ -81,7 +92,7 @@ local last_rolling -- last transport status, to detect changes
 local last_beat -- last beat number
 local last_num -- last note
 local last_chan -- MIDI channel of last note
-local last_up, last_down, last_mode -- previous params, to detect changes
+local last_up, last_down, last_mode, last_sync -- previous params, to detect changes
 local chord = {} -- current chord (note store)
 local chord_index = 0 -- index of last chord note (0 if none)
 local latched = {} -- latched notes
@@ -99,6 +110,7 @@ function dsp_run (_, _, n_samples)
    local subdiv, up, down, mode = math.floor(ctrl[1]), math.floor(ctrl[2]), math.floor(ctrl[3]), math.floor(ctrl[4])
    local vel1, vel2, vel3 = math.floor(ctrl[5]), math.floor(ctrl[6]), math.floor(ctrl[7])
    local latch = ctrl[8] > 0
+   local sync = ctrl[9] > 0
    local rolling = Session:transport_rolling ()
    local changed = false
 
@@ -107,6 +119,11 @@ function dsp_run (_, _, n_samples)
       last_down = down
       last_mode = mode
       changed = true
+   end
+
+   if sync ~= last_sync then
+      last_sync = sync
+      index = 0
    end
 
    if not latch and next(latched) ~= nil then
@@ -332,8 +349,25 @@ function dsp_run (_, _, n_samples)
 	    end
 	    --print("p", p, "v", v)
 	    -- trigger the new note
-	    index = index%n + 1
-	    num = pattern[index]
+	    if sync then
+	       -- sync pattern to the bbt
+	       local mdiv = meter:divisions_per_bar()
+	       local npulses = mdiv * subdiv
+	       local l = #pattern
+	       local k = math.floor(p*subdiv+0.5) -- current index in bar
+	       local n = math.floor(l/npulses) -- bars in pattern
+	       if n > 0 then
+		  k = k + index*npulses
+		  if (k+1) % npulses == 0  then
+		     -- next bar
+		     index = (index+1) % n
+		  end
+	       end
+	       num = pattern[k%l+1]
+	    else
+	       index = index%n + 1
+	       num = pattern[index]
+	    end
 	    if debug >= 3 then
 	       print("note on", num, v)
 	    end

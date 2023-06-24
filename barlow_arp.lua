@@ -14,6 +14,7 @@ Explanation of the controls:
 - Min and Max Velocity: Range for automatic note velocities.
 - Min and Max Filter: Pulse strength filter: Pulses outside the given pulse strength range (normalized values between 0 and 1) will be skipped.
 - Latch: Enable latch mode (keep playing with no input).
+- Sync: Synchronize pattern playback with bars and beats.
 ]]
 }
 
@@ -51,7 +52,8 @@ function dsp_params ()
 	 { type = "input", name = "Max Velocity", min = 0, max = 127, default = 120, integer = true },
 	 { type = "input", name = "Min Filter", min = 0, max = 1, default = 0 },
 	 { type = "input", name = "Max Filter", min = 0, max = 1, default = 1 },
-	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true }
+	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true },
+	 { type = "input", name = "Sync", min = 0, max = 1, default = 0, toggled = true },
       }
 end
 
@@ -65,7 +67,7 @@ local last_rolling -- last transport status, to detect changes
 local last_beat -- last beat number
 local last_num -- last note
 local last_chan -- MIDI channel of last note
-local last_up, last_down, last_mode -- previous params, to detect changes
+local last_up, last_down, last_mode, last_sync -- previous params, to detect changes
 local chord = {} -- current chord (note store)
 local chord_index = 0 -- index of last chord note (0 if none)
 local latched = {} -- latched notes
@@ -367,6 +369,8 @@ function dsp_run (_, _, n_samples)
    local minw, maxw = ctrl[7], ctrl[8]
    -- latch toggle
    local latch = ctrl[9] > 0
+   -- sync toggle
+   local sync = ctrl[10] > 0
    -- rolling state
    local rolling = Session:transport_rolling ()
    -- whether the pattern must be recomputed, due to parameter changes or MIDI
@@ -378,6 +382,11 @@ function dsp_run (_, _, n_samples)
       last_down = down
       last_mode = mode
       changed = true
+   end
+
+   if sync ~= last_sync then
+      last_sync = sync
+      index = 0
    end
 
    if not latch and next(latched) ~= nil then
@@ -616,8 +625,23 @@ function dsp_run (_, _, n_samples)
 	       v = math.floor(v+0.5)
 	       --print("p", p, "v", v)
 	       -- trigger the new note
-	       index = index%n + 1
-	       num = pattern[index]
+	       if sync then
+		  -- sync pattern to the bbt
+		  local l = #pattern
+		  local k = math.floor(p*subdiv+0.5) -- current index in bar
+		  local n = math.floor(l/npulses) -- bars in pattern
+		  if n > 0 then
+		     k = k + index*npulses
+		     if (k+1) % npulses == 0  then
+			-- next bar
+			index = (index+1) % n
+		     end
+		  end
+		  num = pattern[k%l+1]
+	       else
+		  index = index%n + 1
+		  num = pattern[index]
+	       end
 	       if debug >= 3 then
 		  print("note on", num, v)
 	       end
