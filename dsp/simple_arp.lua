@@ -132,13 +132,18 @@ function dsp_run (_, _, n_samples)
    end
 
    for k,ev in ipairs (midiin) do
-      if not rolling then
-	 -- pass through input notes
-	 midiout[k] = ev
-      end
       local status, num, val = table.unpack(ev.data)
       local ch = status & 0xf
       status = status & 0xf0
+      if not rolling then
+	 -- arpeggiator is just listening, pass through all MIDI data
+	 midiout[k] = ev
+      elseif status >= 0xb0 then
+	 -- arpeggiator is playing, pass through all MIDI data that's not
+	 -- note-related, i.e., control change, program change, channel
+	 -- pressure, pitch wheel, and system messages
+	 midiout[k] = ev
+      end
       if status == 0x80 or status == 0x90 and val == 0 then
 	 if debug >= 4 then
 	    print("note off", num, val)
