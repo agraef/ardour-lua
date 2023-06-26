@@ -13,6 +13,7 @@ Explanation of the controls:
 - Pattern: Choose any of the usual arpeggiator patterns (up, down, random, etc.).
 - Min and Max Velocity: Range for automatic note velocities.
 - Min and Max Filter: Pulse strength filter: Pulses outside the given pulse strength range (normalized values between 0 and 1) will be skipped.
+- Gate: Note length as a fraction (0..1 value) of the note division.
 - Latch: Enable latch mode (keep playing with no input).
 - Sync: Synchronize pattern playback with bars and beats.
 ]]
@@ -25,7 +26,11 @@ Explanation of the controls:
 -- detailed rhythmic accents and handles arbitrary time signatures with ease.
 -- It also offers a pulse filter which lets you filter notes by normalized
 -- pulse strengths. Any pulse with a strength below/above the given
--- minimum/maximum values in the 0-1 range will be skipped.
+-- minimum/maximum values in the 0-1 range will be skipped. In this case you
+-- can set the gate value to 0 a.k.a. "legato" to have notes extend over
+-- skipped steps until the next note arrives. This only makes an audible
+-- difference if the pulse filter is in effect, otherwise a gate value of 0
+-- has effectively the same meaning as 1.
 
 -- NOTE: A limitation of the present algorithm is that only subdivisions <= 7
 -- (a.k.a. septuplets) are supported, but if you really need more, then you
@@ -54,6 +59,7 @@ function dsp_params ()
 	 { type = "input", name = "Max Filter", min = 0, max = 1, default = 1 },
 	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true },
 	 { type = "input", name = "Sync", min = 0, max = 1, default = 0, toggled = true },
+	 { type = "input", name = "Gate", min = 0, max = 1, default = 1, scalepoints = { legato = 0 } },
       }
 end
 
@@ -67,6 +73,7 @@ local last_rolling -- last transport status, to detect changes
 local last_beat -- last beat number
 local last_num -- last note
 local last_chan -- MIDI channel of last note
+local last_gate -- off time of last note
 local last_up, last_down, last_mode, last_sync -- previous params, to detect changes
 local chord = {} -- current chord (note store)
 local chord_index = 0 -- index of last chord note (0 if none)
@@ -367,6 +374,7 @@ function dsp_run (_, _, n_samples)
    local minvel, maxvel = math.floor(ctrl[5]), math.floor(ctrl[6])
    -- these are floating point values in the 0-1 range
    local minw, maxw = ctrl[7], ctrl[8]
+   local gate = ctrl[11]
    -- latch toggle
    local latch = ctrl[9] > 0
    -- sync toggle
@@ -539,10 +547,26 @@ function dsp_run (_, _, n_samples)
    end
 
    if rolling then
-      -- If transport is rolling, check whether a beat is due, so that we
-      -- trigger the next note. We want to do this in a sample-accurate manner
-      -- in order to avoid jitter, which makes things a little complicated.
-      -- There are three cases to consider here:
+      -- transport is rolling, so the arpeggiator is playing
+      if last_gate and last_num and
+	 last_gate >= time.sample and last_gate < time.sample_end then
+	 -- Gated notes don't normally fall on a beat, so we detect them
+	 -- here. (If the gate time hasn't been set or we miss it, then the
+	 -- note-off will be taken care of when the next note gets triggered,
+	 -- see below.)
+	 if debug >= 3 then
+	    print("note off", last_num)
+	 end
+	 -- sample-accurate "off" time
+	 local ts = last_gate - time.sample + 1
+	 midiout[k] = { time = ts, data = { 0x80+last_chan, last_num, 100 } }
+	 last_num = nil
+	 k = k+1
+      end
+      -- Check whether a beat is due, so that we trigger the next note. We
+      -- want to do this in a sample-accurate manner in order to avoid jitter,
+      -- which makes things a little complicated.  There are three cases to
+      -- consider here:
       -- (1) Transport just started rolling or the playhead moved for some
       -- reason, in which case we *must* output the note immediately in order
       -- to not miss a beat (even if we're a bit late).
@@ -581,6 +605,9 @@ function dsp_run (_, _, n_samples)
 	 local bbt = tm:bbt_at (pos)
 	 local meter = tm:meter_at (pos)
 	 local tempo = tm:tempo_at (pos)
+	 -- calculate the note-off time in samples, this is used if the gate
+	 -- control is neither 0 nor 1
+	 local gate_ts = ts + math.floor(tm:bbt_duration_at(pos, Temporal.BBT_Offset(0,1,0)):samples() / subdiv * gate)
 	 local n = #pattern
 	 ts = ts - time.sample + 1
 	 if debug >= 1 then
@@ -591,14 +618,22 @@ function dsp_run (_, _, n_samples)
 				 meter:divisions_per_bar(), meter:note_value(),
 				 tempo:quarter_notes_per_minute()))
 	 end
-	 if last_num then
-	    -- kill the old note
-	    if debug >= 3 then
-	       print("note off", last_num)
+	 -- we take a very small gate value (close to 0) to mean legato
+	 -- instead, in which case notes extend to the next unfiltered note
+	 local legato =  gate_ts < time.sample_end
+	 function note_off()
+	    if last_num then
+	       -- kill the old note
+	       if debug >= 3 then
+		  print("note off", last_num)
+	       end
+	       midiout[k] = { time = ts, data = { 0x80+last_chan, last_num, 100 } }
+	       last_num = nil
+	       k = k+1
 	    end
-	    midiout[k] = { time = ts, data = { 0x80+last_chan, last_num, 100 } }
-	    last_num = nil
-	    k = k+1
+	 end
+	 if not legato then
+	    note_off()
 	 end
 	 if n > 0 then
 	    -- calculate a fractional pulse number from the current bbt
@@ -625,6 +660,9 @@ function dsp_run (_, _, n_samples)
 	    w = w/(npulses-1)
 	    -- filter notes
 	    if w >= minw and w <= maxw then
+	       if legato then
+		  note_off()
+	       end
 	       -- compute the velocity, round to nearest integer
 	       local v = minvel + w * (maxvel-minvel)
 	       v = math.floor(v+0.5)
@@ -653,6 +691,14 @@ function dsp_run (_, _, n_samples)
 	       midiout[k] = { time = ts, data = { 0x90+chan, num, v } }
 	       last_num = num
 	       last_chan = chan
+	       if gate < 1 and not legato then
+		  -- Set the sample time at which the note-off is due.
+		  last_gate = gate_ts
+	       else
+		  -- Otherwise don't set the off time in which case the
+		  -- note-off gets triggered automatically above.
+		  last_gate = nil
+	       end
 	    end
 	 end
       end

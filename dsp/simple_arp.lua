@@ -12,6 +12,7 @@ Explanation of the controls:
 - Octave up/down: Sets the octave range for the output.
 - Pattern: Choose any of the usual arpeggiator patterns (up, down, random, etc.).
 - Velocity 1-3: Automatic note velocities for the different beat levels (bar, beat, subdivision pulse).
+- Gate: Note length as a fraction (0..1 value) of the note division.
 - Latch: Enable latch mode (keep playing with no input).
 - Sync: Synchronize pattern playback with bars and beats.
 ]]
@@ -79,6 +80,7 @@ function dsp_params ()
 	 { type = "input", name = "Velocity 3", min = 0, max = 127, default = 60, integer = true },
 	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true },
 	 { type = "input", name = "Sync", min = 0, max = 1, default = 0, toggled = true },
+	 { type = "input", name = "Gate", min = 0, max = 1, default = 1, scalepoints = { legato = 0 } },
       }
 end
 
@@ -92,6 +94,7 @@ local last_rolling -- last transport status, to detect changes
 local last_beat -- last beat number
 local last_num -- last note
 local last_chan -- MIDI channel of last note
+local last_gate -- off time of last note
 local last_up, last_down, last_mode, last_sync -- previous params, to detect changes
 local chord = {} -- current chord (note store)
 local chord_index = 0 -- index of last chord note (0 if none)
@@ -111,6 +114,7 @@ function dsp_run (_, _, n_samples)
    local vel1, vel2, vel3 = math.floor(ctrl[5]), math.floor(ctrl[6]), math.floor(ctrl[7])
    local latch = ctrl[8] > 0
    local sync = ctrl[9] > 0
+   local gate = ctrl[10]
    local rolling = Session:transport_rolling ()
    local changed = false
 
@@ -276,10 +280,26 @@ function dsp_run (_, _, n_samples)
    end
 
    if rolling then
-      -- If transport is rolling, check whether a beat is due, so that we
-      -- trigger the next note. We want to do this in a sample-accurate manner
-      -- in order to avoid jitter, which makes things a little complicated.
-      -- There are three cases to consider here:
+      -- transport is rolling, so the arpeggiator is playing
+      if last_gate and last_num and
+	 last_gate >= time.sample and last_gate < time.sample_end then
+	 -- Gated notes don't normally fall on a beat, so we detect them
+	 -- here. (If the gate time hasn't been set or we miss it, then the
+	 -- note-off will be taken care of when the next note gets triggered,
+	 -- see below.)
+	 if debug >= 3 then
+	    print("note off", last_num)
+	 end
+	 -- sample-accurate "off" time
+	 local ts = last_gate - time.sample + 1
+	 midiout[k] = { time = ts, data = { 0x80+last_chan, last_num, 100 } }
+	 last_num = nil
+	 k = k+1
+      end
+      -- Check whether a beat is due, so that we trigger the next note. We
+      -- want to do this in a sample-accurate manner in order to avoid jitter,
+      -- which makes things a little complicated.  There are three cases to
+      -- consider here:
       -- (1) Transport just started rolling or the playhead moved for some
       -- reason, in which case we *must* output the note immediately in order
       -- to not miss a beat (even if we're a bit late).
@@ -318,6 +338,9 @@ function dsp_run (_, _, n_samples)
 	 local bbt = tm:bbt_at (pos)
 	 local meter = tm:meter_at (pos)
 	 local tempo = tm:tempo_at (pos)
+	 -- calculate the note-off time in samples, this is used if the gate
+	 -- control is neither 0 nor 1
+	 local gate_ts = ts + math.floor(tm:bbt_duration_at(pos, Temporal.BBT_Offset(0,1,0)):samples() / subdiv * gate)
 	 local n = #pattern
 	 ts = ts - time.sample + 1
 	 if debug >= 1 then
@@ -379,6 +402,17 @@ function dsp_run (_, _, n_samples)
 	    midiout[k] = { time = ts, data = { 0x90+chan, num, v } }
 	    last_num = num
 	    last_chan = chan
+	    -- we take a very small gate value (close to 0) to mean legato
+	    -- instead, which means the same as a 1 gate value here
+	    local legato =  gate_ts < time.sample_end
+	    if gate < 1 and not legato then
+	       -- Set the sample time at which the note-off is due.
+	       last_gate = gate_ts
+	    else
+	       -- Otherwise don't set the off time in which case the
+	       -- note-off gets triggered automatically above.
+	       last_gate = nil
+	    end
 	 end
       end
    else
