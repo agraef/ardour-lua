@@ -13,6 +13,7 @@ Explanation of the controls:
 - Pattern: Choose any of the usual arpeggiator patterns (up, down, random, etc.).
 - Velocity 1-3: Automatic note velocities for the different beat levels (bar, beat, subdivision pulse).
 - Gate: Note length as a fraction (0..1 value) of the note division.
+- Swing: Swing value as a fraction ranging from 0.5 (no swing) to 0.75. Triplet feel is at 0.67.
 - Latch: Enable latch mode (keep playing with no input).
 - Sync: Synchronize pattern playback with bars and beats.
 ]]
@@ -38,6 +39,12 @@ Explanation of the controls:
 -- pattern types are supported and can be selected in the setup: up, down,
 -- up-down (exclusive and inclusive modes), order (notes are played in the
 -- order in which they are input), and random.
+
+-- The length of the notes can be set using the gate control as a fraction
+-- (0..1 value) of the note division. The swing control lets you delay the
+-- off-beat notes by varying amounts, given as a fraction ranging from 0.5 to
+-- 0.75; a value of 0.5 produces a straight rhythm (no swing), 0.67 a triplet
+-- feel.
 
 -- A toggle in the setup lets you enable latch mode, in which the current
 -- pattern keeps playing if you release all keys, until you start a new
@@ -81,6 +88,7 @@ function dsp_params ()
 	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true },
 	 { type = "input", name = "Sync", min = 0, max = 1, default = 0, toggled = true },
 	 { type = "input", name = "Gate", min = 0, max = 1, default = 1, scalepoints = { legato = 0 } },
+	 { type = "input", name = "Swing", min = 0.5, max = 0.75, default = 0.5 },
       }
 end
 
@@ -91,10 +99,11 @@ local debug = 1
 
 local chan = 0 -- MIDI output channel
 local last_rolling -- last transport status, to detect changes
-local last_beat -- last beat number
+local last_beat, last_time -- last beat number and sample time
 local last_num -- last note
 local last_chan -- MIDI channel of last note
 local last_gate -- off time of last note
+local swing_time -- sample time of delayed pulse (swing)
 local last_up, last_down, last_mode, last_sync -- previous params, to detect changes
 local chord = {} -- current chord (note store)
 local chord_index = 0 -- index of last chord note (0 if none)
@@ -115,6 +124,12 @@ function dsp_run (_, _, n_samples)
    local latch = ctrl[8] > 0
    local sync = ctrl[9] > 0
    local gate = ctrl[10]
+   -- It seems customary to specify swing using a percentage (or fraction)
+   -- where 50% = 1/2 denotes a straight rhythm (no swing) and 67% = 2/3 a
+   -- triplet feel. Here we translate this to a swing factor which is
+   -- multiplied with the note division time to give the timing of the
+   -- off-beat notes.
+   local swing = 1+2*(ctrl[11]-0.5)
    local rolling = Session:transport_rolling ()
    local changed = false
 
@@ -133,6 +148,10 @@ function dsp_run (_, _, n_samples)
    if not latch and next(latched) ~= nil then
       latched = {}
       changed = true
+   end
+
+   if swing == 1 then
+      swing_time = nil
    end
 
    for k,ev in ipairs (midiin) do
@@ -277,6 +296,7 @@ function dsp_run (_, _, n_samples)
 	 midiout[k] = { time = 1, data = { 0xb0+chan, 123, 0 } }
 	 k = k+1
       end
+      swing_time = nil
    end
 
    if rolling then
@@ -316,8 +336,16 @@ function dsp_run (_, _, n_samples)
       local s1, s2 = time.sample, time.sample_end
       -- current (nominal, i.e., unscaled) beat number, and its sample time
       local bt, ts
-      if last_beat ~= math.floor(time.beat) or bf1 == b1 then
-	 -- next beat is due immediately
+      if last_time and time.sample < last_time then
+	 -- wrap-around (probably during a loop)
+	 swing_time = nil
+      end
+      if swing_time and swing_time >= time.sample then
+	 if swing_time < time.sample_end then
+	    bt, ts = time.beat, swing_time
+	 end
+      elseif last_beat ~= math.floor(time.beat) or bf1 == b1 then
+	 -- sudden jump in transport => next beat is due immediately
 	 bt, ts = time.beat, time.sample
       elseif bf2 > bf1 and bf2 ~= b2 then
 	 -- next beat is due some time in this cycle (we're assuming contant
@@ -332,15 +360,31 @@ function dsp_run (_, _, n_samples)
 	 -- the playhead later (e.g., when transport starts rolling, or at the
 	 -- end of a loop when the playhead wraps around to the beginning)
 	 last_beat = math.floor(bt)
+	 -- same for sample time, to detect wrap-around
+	 last_time = time.sample
 	 -- get the tempo map information
 	 local tm = Temporal.TempoMap.read ()
 	 local pos = Temporal.timepos_t (ts)
 	 local bbt = tm:bbt_at (pos)
 	 local meter = tm:meter_at (pos)
 	 local tempo = tm:tempo_at (pos)
+	 -- duration of this step
+	 local dur = tm:bbt_duration_at(pos, Temporal.BBT_Offset(0,1,0)):samples() / subdiv
+	 -- next note offset in swing mode
+	 local swing_dur = math.floor(dur * swing)
+	 local swing_ts = ts + swing_dur
 	 -- calculate the note-off time in samples, this is used if the gate
 	 -- control is neither 0 nor 1
-	 local gate_ts = ts + math.floor(tm:bbt_duration_at(pos, Temporal.BBT_Offset(0,1,0)):samples() / subdiv * gate)
+	 local gate_dur = math.floor(dur * gate)
+	 -- adjust the gate duration for swing
+	 if swing > 1 then
+	    if swing_time then
+	       gate_dur = gate_dur - math.floor(dur * (swing-1) * gate)
+	    else
+	       gate_dur = gate_dur + math.floor(dur * (swing-1) * gate)
+	    end
+	 end
+	 local gate_ts = ts + gate_dur
 	 local n = #pattern
 	 ts = ts - time.sample + 1
 	 if debug >= 1 then
@@ -382,7 +426,7 @@ function dsp_run (_, _, n_samples)
 	       local mdiv = meter:divisions_per_bar()
 	       local npulses = mdiv * subdiv
 	       local l = #pattern
-	       local k = math.floor(p*subdiv+0.5) -- current index in bar
+	       local k = math.floor(p*subdiv) -- current index in bar
 	       local n = math.floor(l/npulses) -- bars in pattern
 	       if n > 0 then
 		  k = k + index*npulses
@@ -413,11 +457,20 @@ function dsp_run (_, _, n_samples)
 	       -- note-off gets triggered automatically above.
 	       last_gate = nil
 	    end
+	    if swing_time or swing == 1 then
+	       swing_time = nil
+	    else
+	       if debug >= 4 then
+		  print("swing", swing_dur)
+	       end
+	       swing_time = swing_ts
+	    end
 	 end
       end
    else
-      -- transport not rolling; reset the last beat number
-      last_beat = nil
+      -- transport not rolling; reset all cached status information
+      last_beat, last_time = nil, nil
+      swing_time = nil
    end
 
 end

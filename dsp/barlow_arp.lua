@@ -34,7 +34,10 @@ Explanation of the controls:
 
 -- NOTE: A limitation of the present algorithm is that only subdivisions <= 7
 -- (a.k.a. septuplets) are supported, but if you really need more, then you
--- may also just change the time signature accordingly.
+-- may also just change the time signature accordingly. Also, there's no swing
+-- control, but you can easily get a triplet feel with the pulse filter
+-- instead (e.g., in 4/4 try a triplet division along with a minimum pulse
+-- strength of 0.3).
 
 function dsp_ioconfig ()
    return { { midi_in = 1, midi_out = 1, audio_in = -1, audio_out = -1}, }
