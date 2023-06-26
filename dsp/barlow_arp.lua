@@ -69,7 +69,7 @@ end
 -- debug level (1: print beat information in the log window, 2: also print the
 -- current pattern whenever it changes, 3: also print note information, 4:
 -- print everything)
-local debug = 1
+local debug = 0
 
 local chan = 0 -- MIDI output channel
 local last_rolling -- last transport status, to detect changes
