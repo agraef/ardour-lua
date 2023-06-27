@@ -1,6 +1,6 @@
 # Ardour Lua Scripts
 
-Here are some Lua scripts I wrote for an Ardour course. These require a fairly recent Ardour version (tested with Ardour 7.4). The simple_arp.lua script needs Ardour from git (7.4.291), since it relies on the [new time_info data](https://discourse.ardour.org/t/lua-arpeggiator-plugin-anyone/108862) for dsp scripts.
+Here are some Lua scripts I wrote for an Ardour course. These require a fairly recent Ardour version (tested with Ardour 7.4). At the time of this writing, the arpeggiator plugins (simple_arp.lua and barlow_arp.lua) need Ardour from git (7.4.291 or later), since they rely on the [new time_info data](https://discourse.ardour.org/t/lua-arpeggiator-plugin-anyone/108862) for dsp scripts.
 
 Documentation still needs to be written for the most part, so you'll have to take a look at the scripts themselves for further details. Below is a quick rundown of the scripts that are currently available. Please note that the action and dsp scripts can be found in corresponding subdirectories.
 
@@ -20,7 +20,7 @@ These are some helper scripts, mostly for doing twelve-tone music and similar se
 
 ## DSP Scripts
 
-These are MIDI effects which can go as a plugin into a MIDI track. Currently the following two arpeggiator scripts are available:
+These are MIDI effects which go as a plugin into a MIDI track. Currently the following two arpeggiator scripts are available:
 
 - simple_arp.lua: A simple monophonic arpeggiator which takes chords as MIDI input and turns them into arpeggios when transport is rolling. Various controls let you modify parameters such as velocities, octave range, and pattern mode.
 - barlow_arp.lua: This is like simple_arp.lua, but uses the "indispensability" formula by Clarence Barlow (the same formula that's also used in meter.lua, see above) in order to compute more sophisticated pulse strengths for any kind of meter. It produces more detailed rhythmic accents and includes a pulse filter which can be used to filter notes depending on the current pulse strength. It's also a bit heavier on the cpu (occasionally).
@@ -48,7 +48,7 @@ The Barlow Arpeggiator also lets you filter notes by pulse strengths with the **
 
 Raising the minimum strength gradually thins out the note sequence while retaining the more salient steps, and lowering the maximum strength produces an off-beat kind of rhythm. In particular, the pulse filter gives you a way to create a triplet feel without a swing control (e.g., in 4/4 try a triplet division along with a minimum pulse strength of 0.3).
 
-Note that by default, the pulse filter will produce a rest for each skipped step, but you can also set the gate control to 0 to force each note to extend across the skipped steps instead. (This special "forced legato" gate setting will only make a difference in the Barlow arpeggiator, and only if the pulse filter is active. Otherwise the 0 gate value has the same effect as a gate of 1.)
+Note that by default, the pulse filter will produce a rest for each skipped step, but you can also set the gate control to 0 to force each note to extend across the skipped steps instead. (This special "forced legato" gate setting will only make a difference in the Barlow Arpeggiator, and only if the pulse filter is active. Otherwise the 0 gate value has the same effect as a gate of 1.)
 
 
 Copyright © 2023 by Albert Gräf \<<aggraef@gmail.com>\>, please check the individual files for license information (MIT means the MIT license, GPL the GNU Public License v3 or later; if no license is given, the file is in the public domain). Please also check my GitHub page at https://agraef.github.io/.
