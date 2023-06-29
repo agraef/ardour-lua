@@ -198,6 +198,13 @@ function dsp_run (_, _, n_samples)
 	    changed = true
 	 end
 	 chan = ch
+      elseif status == 0xb0 and num == 123 and ch == chan then
+	 if debug >= 4 then
+	    print("all notes off")
+	 end
+	 chord = {}
+	 latched = {}
+	 changed = true
       end
    end
    if changed then
