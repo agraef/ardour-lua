@@ -719,4 +719,9 @@ function dsp_run (_, _, n_samples)
       last_beat = nil
    end
 
+   if debug >= 1 and #midiout > 0 then
+      -- monitor memory usage of the Lua interpreter
+      print(string.format("mem: %0.2f KB", collectgarbage("count")))
+   end
+
 end
