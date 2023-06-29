@@ -66,6 +66,19 @@ function dsp_params ()
       }
 end
 
+function presets()
+   -- just a few basic examples for now, we'll add more stuff here later
+   return
+      {
+	 { name = "0 default", params = { Division = 1, ["Octave up"] = 0, ["Octave down"] = 0, Pattern = 1, ["Min Velocity"] = 60, ["Max Velocity"] = 120, ["Min Filter"] = 0, ["Max Filter"] = 1, Latch = 0, Sync = 0, Gate = 1 } },
+	 { name = "1 latch", params = { Latch = 1, Sync = 0 } },
+	 { name = "2 latch and sync", params = { Latch = 1, Sync = 1 } },
+	 { name = "3 bass", params = { Division = 1, ["Octave up"] = 0, ["Octave down"] = 1, Pattern = 1, ["Min Filter"] = 0, ["Max Filter"] = 1, Gate = 1 } },
+	 { name = "4 triplet feel #1 - synth", params = { Division = 3, ["Octave up"] = 1, ["Octave down"] = 1, Pattern = 3, ["Min Filter"] = 0.2, ["Max Filter"] = 1, Gate = 0 } },
+	 { name = "5 triplet feel #2 - drums", params = { Division = 3, ["Octave up"] = 0, ["Octave down"] = 0, Pattern = 1, ["Min Filter"] = 0.2, ["Max Filter"] = 1, Gate = 0 } },
+      }
+end
+
 -- debug level (1: print beat information in the log window, 2: also print the
 -- current pattern whenever it changes, 3: also print note information, 4:
 -- print everything)
