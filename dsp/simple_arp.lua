@@ -16,17 +16,18 @@ Explanation of the controls:
 - Swing: Swing value as a fraction ranging from 0.5 (no swing) to 0.75. Triplet feel is at 0.67.
 - Latch: Enable latch mode (keep playing with no input).
 - Sync: Synchronize pattern playback with bars and beats.
+- Bypass: Bypass the arpeggiator and pass through the input notes.
 ]]
 }
 
 -- Copyright (c) 2023 Albert Gräf, MIT License
 
--- The arpeggiator takes live note input from the user and constructs a new
--- cyclic pattern each time the input chord changes. Notes from the pattern
--- are triggered at each beat as transport is rolling. The plugin adjusts to
--- the current time signature, and also lets you subdivide the base pulse of
--- the meter with a control parameter in the setup. Note velocities for the
--- different levels can be adjusted in the setup as well.
+-- The arpeggiator takes note input and constructs a new cyclic pattern each
+-- time the input chord changes. Notes from the pattern are triggered at each
+-- beat as transport is rolling. The plugin adjusts to the current time
+-- signature, and also lets you subdivide the base pulse of the meter with a
+-- control parameter in the setup. Note velocities for the different levels
+-- can be adjusted in the setup as well.
 
 -- NOTE: The scheme for varying note velocities in order to create rhythmic
 -- accents is a bit on the simplistic side and only provides three distinct
@@ -55,8 +56,14 @@ Explanation of the controls:
 -- default). Both latch and sync mode are especially helpful for imprecise
 -- players (like me) who tend to miss beats in chord changes.
 
+-- The bypass toggle, when engaged, suspends arpeggiator playback and sends
+-- through the input notes as they are. This is intended to monitor the input
+-- going into the arpeggiator, but can also be used as a performance tool.
+-- (Disabling the arpeggiator plugin in Ardour has a similar effect, but
+-- doesn't silence existing notes, which the bypass toggle does.)
+
 -- All these parameters are plugin controls which can be automated and saved
--- in presets.
+-- in presets. Some factory presets are provided as well.
 
 -- Last but not least, the plugin listens on all MIDI channels, and the last
 -- MIDI channel used in the input also sets the MIDI channel for output. This
@@ -87,6 +94,7 @@ function dsp_params ()
 	 { type = "input", name = "Velocity 3", min = 0, max = 127, default = 60, integer = true },
 	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true },
 	 { type = "input", name = "Sync", min = 0, max = 1, default = 0, toggled = true },
+	 { type = "input", name = "Bypass", min = 0, max = 1, default = 0, toggled = true },
 	 { type = "input", name = "Gate", min = 0, max = 1, default = 1, scalepoints = { legato = 0 } },
 	 { type = "input", name = "Swing", min = 0.5, max = 0.75, default = 0.5 },
       }
@@ -119,7 +127,7 @@ local last_num -- last note
 local last_chan -- MIDI channel of last note
 local last_gate -- off time of last note
 local swing_time -- sample time of delayed pulse (swing)
-local last_up, last_down, last_mode, last_sync -- previous params, to detect changes
+local last_up, last_down, last_mode, last_sync, last_bypass -- previous params, to detect changes
 local chord = {} -- current chord (note store)
 local chord_index = 0 -- index of last chord note (0 if none)
 local latched = {} -- latched notes
@@ -138,13 +146,14 @@ function dsp_run (_, _, n_samples)
    local vel1, vel2, vel3 = math.floor(ctrl[5]), math.floor(ctrl[6]), math.floor(ctrl[7])
    local latch = ctrl[8] > 0
    local sync = ctrl[9] > 0
-   local gate = ctrl[10]
+   local bypass = ctrl[10] > 0
+   local gate = ctrl[11]
    -- It seems customary to specify swing using a percentage (or fraction)
    -- where 50% = 1/2 denotes a straight rhythm (no swing) and 67% = 2/3 a
    -- triplet feel. Here we translate this to a swing factor which is
    -- multiplied with the note division time to give the timing of the
    -- off-beat notes.
-   local swing = 1+2*(ctrl[11]-0.5)
+   local swing = 1+2*(ctrl[12]-0.5)
    local rolling = Session:transport_rolling ()
    local changed = false
 
@@ -169,12 +178,36 @@ function dsp_run (_, _, n_samples)
       swing_time = nil
    end
 
+   local all_notes_off = false
+   if bypass ~= last_bypass then
+      last_bypass = bypass
+      all_notes_off = true
+   end
+
+   if last_rolling ~= rolling then
+      last_rolling = rolling
+      -- transport change, send all-notes off (we only do this when transport
+      -- starts rolling, to silence any notes that may have been passed
+      -- through beforehand; note that Ardour automatically sends
+      -- all-notes-off to all MIDI channels anyway when transport is stopped)
+      if rolling then
+	 all_notes_off = true
+      end
+      swing_time = nil
+   end
+
    local k = 1
+   if all_notes_off then
+      --print("all-notes-off", chan)
+      midiout[k] = { time = 1, data = { 0xb0+chan, 123, 0 } }
+      k = k+1
+   end
+
    for _,ev in ipairs (midiin) do
       local status, num, val = table.unpack(ev.data)
       local ch = status & 0xf
       status = status & 0xf0
-      if not rolling then
+      if not rolling or bypass then
 	 -- arpeggiator is just listening, pass through all MIDI data
 	 midiout[k] = ev
 	 k = k+1
@@ -310,21 +343,8 @@ function dsp_run (_, _, n_samples)
       end
    end
 
-   if last_rolling ~= rolling then
-      last_rolling = rolling
-      -- transport change, send all-notes off (we only do this when transport
-      -- starts rolling, to silence any notes that may have been passed
-      -- through beforehand; note that Ardour automatically sends
-      -- all-notes-off to all MIDI channels anyway when transport is stopped)
-      if rolling then
-	 midiout[k] = { time = 1, data = { 0xb0+chan, 123, 0 } }
-	 k = k+1
-      end
-      swing_time = nil
-   end
-
-   if rolling then
-      -- transport is rolling, so the arpeggiator is playing
+   if rolling and not bypass then
+      -- transport is rolling, not bypassed, so the arpeggiator is playing
       if last_gate and last_num and
 	 last_gate >= time.sample and last_gate < time.sample_end then
 	 -- Gated notes don't normally fall on a beat, so we detect them
@@ -492,7 +512,7 @@ function dsp_run (_, _, n_samples)
 	 end
       end
    else
-      -- transport not rolling; reset all cached status information
+      -- transport not rolling or bypass; reset all cached status information
       last_beat, last_time = nil, nil
       swing_time = nil
    end

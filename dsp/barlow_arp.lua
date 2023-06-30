@@ -16,6 +16,7 @@ Explanation of the controls:
 - Gate: Note length as a fraction (0..1 value) of the note division.
 - Latch: Enable latch mode (keep playing with no input).
 - Sync: Synchronize pattern playback with bars and beats.
+- Bypass: Bypass the arpeggiator and pass through the input notes.
 ]]
 }
 
@@ -62,6 +63,7 @@ function dsp_params ()
 	 { type = "input", name = "Max Filter", min = 0, max = 1, default = 1 },
 	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true },
 	 { type = "input", name = "Sync", min = 0, max = 1, default = 0, toggled = true },
+	 { type = "input", name = "Bypass", min = 0, max = 1, default = 0, toggled = true },
 	 { type = "input", name = "Gate", min = 0, max = 1, default = 1, scalepoints = { legato = 0 } },
       }
 end
@@ -90,7 +92,7 @@ local last_beat -- last beat number
 local last_num -- last note
 local last_chan -- MIDI channel of last note
 local last_gate -- off time of last note
-local last_up, last_down, last_mode, last_sync -- previous params, to detect changes
+local last_up, last_down, last_mode, last_sync, last_bypass -- previous params, to detect changes
 local chord = {} -- current chord (note store)
 local chord_index = 0 -- index of last chord note (0 if none)
 local latched = {} -- latched notes
@@ -390,11 +392,13 @@ function dsp_run (_, _, n_samples)
    local minvel, maxvel = math.floor(ctrl[5]), math.floor(ctrl[6])
    -- these are floating point values in the 0-1 range
    local minw, maxw = ctrl[7], ctrl[8]
-   local gate = ctrl[11]
+   local gate = ctrl[12]
    -- latch toggle
    local latch = ctrl[9] > 0
    -- sync toggle
    local sync = ctrl[10] > 0
+   -- bypass toggle
+   local bypass = ctrl[11] > 0
    -- rolling state
    local rolling = Session:transport_rolling ()
    -- whether the pattern must be recomputed, due to parameter changes or MIDI
@@ -418,14 +422,38 @@ function dsp_run (_, _, n_samples)
       changed = true
    end
 
+   local all_notes_off = false
+   if bypass ~= last_bypass then
+      last_bypass = bypass
+      all_notes_off = true
+   end
+
+   if last_rolling ~= rolling then
+      last_rolling = rolling
+      -- transport change, send all-notes off (we only do this when transport
+      -- starts rolling, to silence any notes that may have been passed
+      -- through beforehand; note that Ardour automatically sends
+      -- all-notes-off to all MIDI channels anyway when transport is stopped)
+      if rolling then
+	 all_notes_off = true
+      end
+   end
+
    local k = 1
+   if all_notes_off then
+      --print("all-notes-off", chan)
+      midiout[k] = { time = 1, data = { 0xb0+chan, 123, 0 } }
+      k = k+1
+   end
+
    for _,ev in ipairs (midiin) do
       local status, num, val = table.unpack(ev.data)
       local ch = status & 0xf
       status = status & 0xf0
-      if not rolling then
+      if not rolling or bypass then
 	 -- arpeggiator is just listening, pass through all MIDI data
 	 midiout[k] = ev
+	 --print(string.format("[%d] %0x %d %d", ev.time, ev.data[1], ev.data[2], ev.data[3]))
 	 k = k+1
       elseif status >= 0xb0 then
 	 -- arpeggiator is playing, pass through all MIDI data that's not
@@ -559,20 +587,8 @@ function dsp_run (_, _, n_samples)
       end
    end
 
-   if last_rolling ~= rolling then
-      last_rolling = rolling
-      -- transport change, send all-notes off (we only do this when transport
-      -- starts rolling, to silence any notes that may have been passed
-      -- through beforehand; note that Ardour automatically sends
-      -- all-notes-off to all MIDI channels anyway when transport is stopped)
-      if rolling then
-	 midiout[k] = { time = 1, data = { 0xb0+chan, 123, 0 } }
-	 k = k+1
-      end
-   end
-
-   if rolling then
-      -- transport is rolling, so the arpeggiator is playing
+   if rolling and not bypass then
+      -- transport is rolling, not bypassed, so the arpeggiator is playing
       if last_gate and last_num and
 	 last_gate >= time.sample and last_gate < time.sample_end then
 	 -- Gated notes don't normally fall on a beat, so we detect them
@@ -728,7 +744,7 @@ function dsp_run (_, _, n_samples)
 	 end
       end
    else
-      -- transport not rolling; reset the last beat number
+      -- transport not rolling or bypass; reset the last beat number
       last_beat = nil
    end
 
