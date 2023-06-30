@@ -6,6 +6,8 @@ ardour {
    license     = "GPL",
    description = [[Simple monophonic arpeggiator example with sample-accurate triggering and velocities computed using Barlow's indispensability formula. This automatically adjusts to the current time signature and division to produce rhythmic accents in accordance with the meter by varying the note velocities in a given range.
 
+In memory of Clarence Barlow (27 December 1945 – 29 June 2023).
+
 Explanation of the controls:
 
 - Division: Number of pulses to subdivide the meter as given by the time signature.

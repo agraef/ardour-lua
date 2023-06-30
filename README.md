@@ -25,11 +25,14 @@ These are MIDI effects which go as a plugin into a MIDI track. Currently the fol
 - simple_arp.lua: A simple monophonic arpeggiator which takes chords as MIDI input and turns them into arpeggios when transport is rolling. Various controls let you modify parameters such as velocities, octave range, and pattern mode.
 - barlow_arp.lua: This is like simple_arp.lua, but uses the "indispensability" formula by Clarence Barlow (the same formula that's also used in meter.lua, see above) in order to compute more sophisticated pulse strengths for any kind of meter. It produces more detailed rhythmic accents and includes a pulse filter which can be used to filter notes depending on the current pulse strength. It's also a bit heavier on the cpu (occasionally).
 
+Sadly, Clarence Barlow passed away very recently in June 2023. The barlow_arp.lua plugin is dedicated to his memory. Rest in peace, Clarence.
+
 ### Using the Arpeggiators
 
 Simply place the arpeggiator you prefer on a MIDI track, usually right in front of the instrument. There are a bunch of parameters that you can change, which can also be automated and saved in presets. The common ones are:
 
 - **Latch** and **Sync**: These are toggles which engage latch and sync mode, respectively. In latch mode, the arpeggiator keeps playing if you release the keys on your MIDI keyboard, which makes changing chords easier. In sync mode, the arpeggiator playback is synchronized to bars and beats, so that the same note of the pattern sounds at each position in the cycle. This also works with patterns spanning multiple bars, and often creates a much smoother arpeggio than just cycling through the pattern (the default mode). Both modes are there to help imprecise players (like me) who tend to miss beats in chord changes, and make playing the arpeggiators much easier.
+- **Bypass**: This toggle, when engaged, suspends the arpeggiator and passes through its input as is. This provides a means to monitor the input to the arpeggiator, but can also be used as a performance tool. (Disabling the plugin in Ardour has a similar effect, but doesn't silence existing notes during playback. The bypass toggle eliminates this problem.)
 - **Division**: Sets the desired number of subdivisions of the beat. E.g., in a 4/4 meter a division value of 2 gives you duplets (eighth notes), 3 gives you (eighth) triplets, etc. The resulting number of steps you get is the numerator of the meter times the number of subdivisions.
 - **Octave up/down**: Sets the octave range. Input notes will be repeated in the given number of octaves above and below the input.
 - **Pattern**: Sets the style of pattern to play. The usual pattern types are supported and can be selected in the setup: **up**, **down**, up-down (**exclusive** and **inclusive** modes, which differ in whether the down sequence excludes or includes the highest note), **order** (notes are played in input order, which is useful, e.g., when playing a drumkit), and **random** (a new random order of the notes is generated after each chord change).
@@ -52,7 +55,7 @@ Note that by default, the pulse filter will produce a rest for each skipped step
 
 #### Factory Presets
 
-Both arpeggiators include some factory presets for illustration purposes, these can be selected from the presets dropdown in Ardour's plugin dialog as usual. (This needs Ardour 7.5-78 or later to work.) The list is still rather short at the time of this writing, though, so contributions are appreciated. If you have any cool presets that you might want to share, please let me know.
+Both arpeggiators include some factory presets for illustration purposes, these can be selected from the presets dropdown in Ardour's plugin dialog as usual. (This needs Ardour 7.5-78 or later to work.) The list is still rather short at the time of this writing, so contributions are appreciated. If you have any cool presets that you might want to share, please let me know.
 
 
 Copyright © 2023 by Albert Gräf \<<aggraef@gmail.com>\>, please check the individual files for license information (MIT means the MIT license, GPL the GNU Public License v3 or later; if no license is given, the file is in the public domain). Please also check my GitHub page at https://agraef.github.io/.
