@@ -154,7 +154,11 @@ function dsp_run (_, _, n_samples)
    -- multiplied with the note division time to give the timing of the
    -- off-beat notes.
    local swing = 1+2*(ctrl[12]-0.5)
-   local rolling = Session:transport_rolling ()
+   -- rolling state: It seems that we need to check the transport state (as
+   -- given by Ardour's "transport finite state machine" = TFSM) here, even if
+   -- the transport is not actually moving yet. Otherwise some input notes may
+   -- errorneously slip through before playback really starts.
+   local rolling = Session:transport_state_rolling ()
    local changed = false
 
    if up ~= last_up or down ~= last_down or mode ~= last_mode then

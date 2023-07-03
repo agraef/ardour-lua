@@ -401,8 +401,11 @@ function dsp_run (_, _, n_samples)
    local sync = ctrl[10] > 0
    -- bypass toggle
    local bypass = ctrl[11] > 0
-   -- rolling state
-   local rolling = Session:transport_rolling ()
+   -- rolling state: It seems that we need to check the transport state (as
+   -- given by Ardour's "transport finite state machine" = TFSM) here, even if
+   -- the transport is not actually moving yet. Otherwise some input notes may
+   -- errorneously slip through before playback really starts.
+   local rolling = Session:transport_state_rolling ()
    -- whether the pattern must be recomputed, due to parameter changes or MIDI
    -- input
    local changed = false
