@@ -20,14 +20,17 @@ These are some helper scripts, mostly for doing twelve-tone music and similar se
 
 ## DSP Scripts
 
-These are MIDI effects which go as a plugin into a MIDI track. Currently the following two arpeggiator scripts are available:
+These are MIDI effects which go as a plugin into a MIDI track. Currently the following scripts are available:
 
 - simple_arp.lua: A simple monophonic arpeggiator which takes chords as MIDI input and turns them into arpeggios when transport is rolling. Various controls let you modify parameters such as velocities, octave range, and pattern mode.
 - barlow_arp.lua: This is like simple_arp.lua, but uses the "indispensability" formula by Clarence Barlow (the same formula that's also used in meter.lua, see above) in order to compute more sophisticated pulse strengths for any kind of meter. It produces more detailed rhythmic accents and includes a pulse filter which can be used to filter notes depending on the current pulse strength. It's also a bit heavier on the cpu (occasionally).
+- raptor_arp.lua: This is a much more advanced arpeggiator based on Barlow's comprehensive theories of harmony and meter. It is really a full-blown algorithmic composition program in disguise. Note that the barlow_arp plugin is a much simpler program which only implements some of the basic features of the full Raptor program, but it's also much easier to use.
 
-Sadly, Clarence Barlow passed away very recently in June 2023. The barlow_arp.lua plugin is dedicated to his memory. Rest in peace, Clarence.
+Sadly, Clarence Barlow passed away at the end of June 2023. The barlow_arp and raptor_arp plugins are dedicated to his memory. This is quite fitting since the original versions of these programs were developed in close collaboration with him. Rest in peace, Clarence.
 
 ### Using the Arpeggiators
+
+Here is a brief introduction to the simple_arp and barlow_arp plugins. (The raptor_lua plugin is beyond the scope of this README. Generally speaking, it can be used in a similar fashion, but has a lot more parameters and is thus more difficult to set up. However, it also includes some factory presets to help you get started. Also, check https://github.com/agraef/raptor-lua for the Pd version of this program, which offers extensive documentation of the Raptor algorithm and its features.)
 
 Simply place the arpeggiator you prefer on a MIDI track, usually right in front of the instrument. There are a bunch of parameters that you can change, which can also be automated and saved in presets. The common ones are:
 
