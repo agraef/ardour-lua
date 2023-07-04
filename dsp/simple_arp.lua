@@ -454,7 +454,7 @@ function dsp_run (_, _, n_samples)
 	 end
 	 if n > 0 then
 	    -- calculate a fractional pulse number from the current bbt
-	    local p = bbt.beats-1 + bbt.ticks / Temporal.ticks_per_beat
+	    local p = bbt.beats-1 + math.max(0, bbt.ticks) / Temporal.ticks_per_beat
 	    -- Calculate a basic velocity pattern: by default, 100 for the
 	    -- first beat in a bar, 80 for the other non-fractional beats, 60
 	    -- for everything else (subdivision pulses). These values can be

@@ -683,7 +683,7 @@ function dsp_run (_, _, n_samples)
 	 end
 	 if n > 0 then
 	    -- calculate a fractional pulse number from the current bbt
-	    local p = bbt.beats-1 + bbt.ticks / Temporal.ticks_per_beat
+	    local p = bbt.beats-1 + math.max(0, bbt.ticks) / Temporal.ticks_per_beat
 	    -- Detect meter changes and update the Barlow meter object
 	    -- accordingly.
 	    local mdiv = meter:divisions_per_bar()
