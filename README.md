@@ -1,6 +1,6 @@
 # Ardour Lua Scripts
 
-Here are some Lua scripts I wrote for an Ardour course. These require a fairly recent Ardour version (tested with Ardour 7.4 and 7.5). Note that the arpeggiator plugins (simple_arp.lua and barlow_arp.lua) need Ardour 7.5 or later, since they rely on the [new time_info data](https://discourse.ardour.org/t/lua-arpeggiator-plugin-anyone/108862) for dsp scripts.
+Here are some Lua scripts I wrote for an Ardour course. These require a fairly recent Ardour version (tested with Ardour 7.4 and 7.5). Note that the arpeggiator plugins (*_arp.lua) need Ardour 7.5 or later, since they rely on the [new time_info data](https://discourse.ardour.org/t/lua-arpeggiator-plugin-anyone/108862) for dsp scripts.
 
 Documentation still needs to be written for the most part, so you'll have to take a look at the scripts themselves for further details. Below is a quick rundown of the scripts that are currently available. Please note that the action and dsp scripts can be found in corresponding subdirectories.
 
@@ -61,4 +61,4 @@ Note that by default, the pulse filter will produce a rest for each skipped step
 Both arpeggiators include some factory presets for illustration purposes, these can be selected from the presets dropdown in Ardour's plugin dialog as usual. (This needs Ardour 7.5-78 or later to work.) The list is still rather short at the time of this writing, so contributions are appreciated. If you have any cool presets that you might want to share, please let me know.
 
 
-Copyright © 2023 by Albert Gräf \<<aggraef@gmail.com>\>, please check the individual files for license information (MIT means the MIT license, GPL the GNU Public License v3 or later; if no license is given, the file is in the public domain). Please also check my GitHub page at https://agraef.github.io/.
+Copyright © 2023 by Albert Gräf \<<aggraef@gmail.com>\>, please check the individual files for license information. MIT means the MIT license (see MIT-LICENSE.txt), GPL the GNU Public License v3 or later (see COPYING); if no license is given, the file is in the public domain. Please also check my GitHub page at https://agraef.github.io/.
