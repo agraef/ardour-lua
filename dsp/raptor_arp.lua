@@ -1746,6 +1746,7 @@ function dsp_params ()
 	      {	["0 off"] = 0, ["1 on"] = 1, ["2 treble"] = 2, ["3 bass"] = 3 } },
 	 { type = "input", name = "loopsize", min = 0, max = 16, default = 4, integer = true, doc = "loop size (number of bars)" },
 	 { type = "input", name = "loop", min = 0, max = 1, default = 0, toggled = true, doc = "toggle loop mode" },
+	 { type = "input", name = "mute", min = 0, max = 1, default = 0, toggled = true, doc = "turn the arpeggiator off, suppress all note output" },
       }
 end
 
@@ -1764,7 +1765,7 @@ end
 function presets()
    return
       {
-	 { name = "default", params = { bypass = 0, latch = 0, division = 1, pgm = 1, up = 1, down = -1, mode = 1, raptor = 0, minvel = 60, maxvel = 120, velmod = 100, gain = 100, gate = 100, gatemod = 0, pmin = 30, pmax = 100, pmod = 0, hmin = 0, hmax = 100, hmod = 0, pref = 100, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4, loop = 0 } },
+	 { name = "default", params = { bypass = 0, latch = 0, division = 1, pgm = 0, up = 1, down = -1, mode = 1, raptor = 0, minvel = 60, maxvel = 120, velmod = 100, gain = 100, gate = 100, gatemod = 0, pmin = 30, pmax = 100, pmod = 0, hmin = 0, hmax = 100, hmod = 0, pref = 100, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4, loop = 0, mute = 0 } },
 	 { name = "arp", params = { division = 3, pgm = 26, up = 0, down = -1, mode = 3, raptor = 1, minvel = 105, maxvel = 120, velmod = 100, gain = 50, gate = 100, gatemod = 0, pmin = 90, pmax = 100, pmod = -100, hmin = 11, hmax = 100, hmod = 0, pref = 80, prefmod = 0, smin = 2, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = -12, pitchtracker = 2, loopsize = 4 } },
 	 { name = "bass", params = { division = 3, pgm = 35, up = 0, down = -1, mode = 3, raptor = 1, minvel = 40, maxvel = 120, velmod = 100, gain = 50, gate = 100, gatemod = 0, pmin = 20, pmax = 100, pmod = 100, hmin = 12, hmax = 100, hmod = 10, pref = 80, prefmod = 10, smin = 2, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 7, pitchlo = 0, pitchtracker = 3, loopsize = 4 } },
 	 { name = "piano", params = { division = 3, pgm = 1, up = 1, down = -1, mode = 0, raptor = 1, minvel = 90, maxvel = 120, velmod = 100, gain = 50, gate = 100, gatemod = 0, pmin = 40, pmax = 100, pmod = 100, hmin = 14, hmax = 100, hmod = 10, pref = 60, prefmod = 10, smin = 2, smax = 5, smod = 0, nmax = 2, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = -18, pitchtracker = 2, loopsize = 4 } },
@@ -1781,6 +1782,7 @@ local n_params = #dsp_params()
 local last_rolling -- last transport status, to detect changes
 local last_beat -- last beat number
 local last_bypass -- last bypass toggle
+local last_mute -- last mute toggle
 -- previous param values, to detect changes
 local last_param = {}
 
@@ -1808,7 +1810,7 @@ local function arp_set_loopsize(self, x)
    self:set_loopsize(x*arp.beats)
 end
 
-local param_set = { nil, nil, nil, arp.set_latch, arp.set_up, arp.set_down, arp.set_mode, arp.set_raptor, arp.set_minvel, arp.set_maxvel, arp.set_velmod, arp.set_gain, arp.set_gate, arp.set_gatemod, arp.set_pmin, arp.set_pmax, arp.set_pmod, arp.set_hmin, arp.set_hmax, arp.set_hmod, arp.set_pref, arp.set_prefmod, arp.set_smin, arp.set_smax, arp.set_smod, arp.set_nmax, arp.set_nmod, arp.set_uniq, arp.set_pitchhi, arp.set_pitchlo, arp.set_pitchtracker, arp_set_loopsize, arp.set_loop }
+local param_set = { nil, nil, nil, arp.set_latch, arp.set_up, arp.set_down, arp.set_mode, arp.set_raptor, arp.set_minvel, arp.set_maxvel, arp.set_velmod, arp.set_gain, arp.set_gate, arp.set_gatemod, arp.set_pmin, arp.set_pmax, arp.set_pmod, arp.set_hmin, arp.set_hmax, arp.set_hmod, arp.set_pref, arp.set_prefmod, arp.set_smin, arp.set_smax, arp.set_smod, arp.set_nmax, arp.set_nmod, arp.set_uniq, arp.set_pitchhi, arp.set_pitchlo, arp.set_pitchtracker, arp_set_loopsize, arp.set_loop, nil }
 
 function dsp_run (_, _, n_samples)
    assert (type(midiout) == "table")
@@ -1817,9 +1819,11 @@ function dsp_run (_, _, n_samples)
 
    local ctrl = CtrlPorts:array ()
    local subdiv = math.floor(ctrl[2])
-   local loopsize = math.floor(ctrl[n_params-1])
+   local loopsize = math.floor(ctrl[n_params-2])
    -- bypass toggle
    local bypass = ctrl[1] > 0
+   -- mute toggle
+   local mute = ctrl[n_params] > 0
    -- rolling state: It seems that we need to check the transport state (as
    -- given by Ardour's "transport finite state machine" = TFSM) here, even if
    -- the transport is not actually moving yet. Otherwise some input notes may
@@ -1849,6 +1853,11 @@ function dsp_run (_, _, n_samples)
    local all_notes_off = false
    if bypass ~= last_bypass then
       last_bypass = bypass
+      all_notes_off = true
+   end
+
+   if mute ~= last_mute then
+      last_mute = mute
       all_notes_off = true
    end
 
@@ -1903,7 +1912,7 @@ function dsp_run (_, _, n_samples)
       end
    end
 
-   if rolling and not bypass then
+   if rolling and not bypass and not mute then
       -- transport is rolling, not bypassed, so the arpeggiator is playing
       function notes_off(ts)
 	 if last_notes then
