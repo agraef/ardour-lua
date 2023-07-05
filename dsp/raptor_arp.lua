@@ -828,7 +828,7 @@ function arpeggio:numarg(x)
    if type(x) == "number" then
       return x
    else
-      error("arpeggio: expected integer, got " .. tostring(x))
+      error("arpeggio: expected number, got " .. tostring(x))
    end
 end
 
@@ -1454,7 +1454,7 @@ end
 function arpeggio:set_velmod(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.velmod = math.max(-100, math.min(100, x))/100
+      self.velmod = math.max(-1, math.min(1, x))
    end
 end
 
@@ -1468,42 +1468,42 @@ end
 function arpeggio:set_gain(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.gain = math.max(0, math.min(100, x))/100
+      self.gain = math.max(0, math.min(1, x))
    end
 end
 
 function arpeggio:set_gate(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.gate = math.max(0, math.min(1000, x))/100
+      self.gate = math.max(0, math.min(10, x))
    end
 end
 
 function arpeggio:set_gatemod(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.gatemod = math.max(-100, math.min(100, x))/100
+      self.gatemod = math.max(-1, math.min(1, x))
    end
 end
 
 function arpeggio:set_pmin(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.pmin = math.max(0, math.min(100, x))/100
+      self.pmin = math.max(0, math.min(1, x))
    end
 end
 
 function arpeggio:set_pmax(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.pmax = math.max(0, math.min(100, x))/100
+      self.pmax = math.max(0, math.min(1, x))
    end
 end
 
 function arpeggio:set_pmod(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.pmod = math.max(-100, math.min(100, x))/100
+      self.pmod = math.max(-1, math.min(1, x))
    end
 end
 
@@ -1518,28 +1518,28 @@ end
 function arpeggio:set_nmod(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.nmod = math.max(-100, math.min(100, x))/100
+      self.nmod = math.max(-1, math.min(1, x))
    end
 end
 
 function arpeggio:set_hmin(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.hmin = math.max(0, math.min(100, x))/100
+      self.hmin = math.max(0, math.min(1, x))
    end
 end
 
 function arpeggio:set_hmax(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.hmax = math.max(0, math.min(100, x))/100
+      self.hmax = math.max(0, math.min(1, x))
    end
 end
 
 function arpeggio:set_hmod(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.hmod = math.max(-100, math.min(100, x))/100
+      self.hmod = math.max(-1, math.min(1, x))
    end
 end
 
@@ -1560,7 +1560,7 @@ end
 function arpeggio:set_smod(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.smod = math.max(-100, math.min(100, x))/100
+      self.smod = math.max(-1, math.min(1, x))
    end
 end
 
@@ -1574,14 +1574,14 @@ end
 function arpeggio:set_pref(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.pref = math.max(-100, math.min(100, x))/100
+      self.pref = math.max(-1, math.min(1, x))
    end
 end
 
 function arpeggio:set_prefmod(x)
    x = self:numarg(x)
    if type(x) == "number" then
-      self.prefmod = math.max(-100, math.min(100, x))/100
+      self.prefmod = math.max(-1, math.min(1, x))
    end
 end
 
@@ -1702,52 +1702,58 @@ function dsp_options ()
    return { time_info = true }
 end
 
+local hrm_scalepoints = { ["0.09 (minor 7th and 3rd)"] = 0.09, ["0.1 (major 2nd and 3rd)"] = 0.1, ["0.17 (4th)"] = 0.17, ["0.21 (5th)"] = 0.21, ["1 (unison, octave)"] = 1 }
+
+local params = {
+   { type = "input", name = "bypass", min = 0, max = 1, default = 0, toggled = true, doc = "bypass the arpeggiator, pass through input notes" },
+   { type = "input", name = "division", min = 1, max = 7, default = 1, integer = true, doc = "number of subdivisions of the beat" },
+   { type = "input", name = "pgm", min = 0, max = 128, default = 0, integer = true, doc = "program change", scalepoints = { default = 0 } },
+   { type = "input", name = "latch", min = 0, max = 1, default = 0, toggled = true, doc = "toggle latch mode" },
+   { type = "input", name = "up", min = -2, max = 2, default = 1, integer = true, doc = "octave range up" },
+   { type = "input", name = "down", min = -2, max = 2, default = -1, integer = true, doc = "octave range down" },
+   -- Raptor's usual default for the pattern is 0 = random, but 1 = up
+   -- seems to be a more sensible choice.
+   { type = "input", name = "mode", min = 0, max = 5, default = 1, enum = true, doc = "pattern style",
+     scalepoints =
+	{ ["0 random"] = 0, ["1 up"] = 1, ["2 down"] = 2, ["3 up-down"] = 3, ["4 down-up"] = 4, ["5 outside-in"] = 5 } },
+   { type = "input", name = "raptor", min = 0, max = 1, default = 0, toggled = true, doc = "toggle raptor mode" },
+   { type = "input", name = "minvel", min = 0, max = 127, default = 60, integer = true, doc = "minimum velocity" },
+   { type = "input", name = "maxvel", min = 0, max = 127, default = 120, integer = true, doc = "maximum velocity" },
+   { type = "input", name = "velmod", min = -1, max = 1, default = 1, doc = "automatic velocity modulation according to current pulse strength" },
+   { type = "input", name = "gain", min = 0, max = 1, default = 1, doc = "wet/dry mix between input velocity and set values (min/max velocity)" },
+   -- Pd Raptor allows this to go from 0 to 1000%, but we only support
+   -- 0-100% here
+   { type = "input", name = "gate", min = 0, max = 1, default = 1, doc = "gate as fraction of pulse length", scalepoints = { legato = 0 } },
+   { type = "input", name = "gatemod", min = -1, max = 1, default = 0, doc = "automatic gate modulation according to current pulse strength" },
+   { type = "input", name = "pmin", min = 0, max = 1, default = 0.3, doc = "minimum note probability" },
+   { type = "input", name = "pmax", min = 0, max = 1, default = 1, doc = "maximum note probability" },
+   { type = "input", name = "pmod", min = -1, max = 1, default = 0, doc = "automatic note probability modulation according to current pulse strength" },
+   { type = "input", name = "hmin", min = 0, max = 1, default = 0, doc = "minimum harmonicity", scalepoints = hrm_scalepoints },
+   { type = "input", name = "hmax", min = 0, max = 1, default = 1, doc = "maximum harmonicity", scalepoints = hrm_scalepoints },
+   { type = "input", name = "hmod", min = -1, max = 1, default = 0, doc = "automatic harmonicity modulation according to current pulse strength" },
+   { type = "input", name = "pref", min = -1, max = 1, default = 1, doc = "harmonic preference" },
+   { type = "input", name = "prefmod", min = -1, max = 1, default = 0, doc = "automatic harmonic preference modulation according to current pulse strength" },
+   { type = "input", name = "smin", min = -12, max = 12, default = 1, integer = true, doc = "minimum step size" },
+   { type = "input", name = "smax", min = -12, max = 12, default = 7, integer = true, doc = "maximum step size" },
+   { type = "input", name = "smod", min = -1, max = 1, default = 0, doc = "automatic step size modulation according to current pulse strength" },
+   { type = "input", name = "nmax", min = 0, max = 10, default = 1, integer = true, doc = "maximum polyphony (number of simultaneous notes)" },
+   { type = "input", name = "nmod", min = -1, max = 1, default = 0, doc = "automatic modulation of the number of notes according to current pulse strength" },
+   { type = "input", name = "uniq", min = 0, max = 1, default = 1, toggled = true, doc = "don't repeat notes in consecutive steps" },
+   { type = "input", name = "pitchhi", min = -36, max = 36, default = 0, integer = true, doc = "extended pitch range up in semitones (raptor mode)" },
+   { type = "input", name = "pitchlo", min = -36, max = 36, default = 0, integer = true, doc = "extended pitch range down in semitones (raptor mode)" },
+   { type = "input", name = "pitchtracker", min = 0, max = 3, default = 0, enum = true, doc = "pitch tracker mode, follow input to adjust the pitch range (raptor mode)",
+     scalepoints =
+	{ ["0 off"] = 0, ["1 on"] = 1, ["2 treble"] = 2, ["3 bass"] = 3 } },
+   { type = "input", name = "loopsize", min = 0, max = 16, default = 4, integer = true, doc = "loop size (number of bars)" },
+   { type = "input", name = "loop", min = 0, max = 1, default = 0, toggled = true, doc = "toggle loop mode" },
+   { type = "input", name = "mute", min = 0, max = 1, default = 0, toggled = true, doc = "turn the arpeggiator off, suppress all note output" },
+}
+
+local n_params = #params
+local int_param = map(params, function(x) return x.integer == true or x.enum == true or x.toggled == true end)
+
 function dsp_params ()
-   return
-      {
-	 { type = "input", name = "bypass", min = 0, max = 1, default = 0, toggled = true, doc = "bypass the arpeggiator, pass through input notes" },
-	 { type = "input", name = "division", min = 1, max = 7, default = 1, integer = true, doc = "number of subdivisions of the beat" },
-	 { type = "input", name = "pgm", min = 0, max = 128, default = 0, integer = true, doc = "program change", scalepoints = { default = 0 } },
-	 { type = "input", name = "latch", min = 0, max = 1, default = 0, toggled = true, doc = "toggle latch mode" },
-	 { type = "input", name = "up", min = -2, max = 2, default = 1, integer = true, doc = "octave range up" },
-	 { type = "input", name = "down", min = -2, max = 2, default = -1, integer = true, doc = "octave range down" },
-	 -- Raptor's usual default for the pattern is 0 = random, but 1 = up
-	 -- seems to be a more sensible choice.
-	 { type = "input", name = "mode", min = 0, max = 5, default = 1, enum = true, doc = "pattern style",
-	   scalepoints =
-	      {	["0 random"] = 0, ["1 up"] = 1, ["2 down"] = 2, ["3 up-down"] = 3, ["4 down-up"] = 4, ["5 outside-in"] = 5 } },
-	 { type = "input", name = "raptor", min = 0, max = 1, default = 0, toggled = true, doc = "toggle raptor mode" },
-	 { type = "input", name = "minvel", min = 0, max = 127, default = 60, integer = true, doc = "minimum velocity" },
-	 { type = "input", name = "maxvel", min = 0, max = 127, default = 120, integer = true, doc = "maximum velocity" },
-	 { type = "input", name = "velmod", min = -100, max = 100, default = 100, integer = true, doc = "automatic velocity modulation according to current pulse strength" },
-	 { type = "input", name = "gain", min = 0, max = 100, default = 100, integer = true, doc = "wet/dry mix between input velocity and set values (min/max velocity)" },
-	 -- Pd Raptor allows this to go from 0 to 1000%, but we only support
-	 -- 0-100% here
-	 { type = "input", name = "gate", min = 0, max = 100, default = 100, integer = true, doc = "gate as percentage of pulse length", scalepoints = { legato = 0 } },
-	 { type = "input", name = "gatemod", min = -100, max = 100, default = 0, integer = true, doc = "automatic gate modulation according to current pulse strength" },
-	 { type = "input", name = "pmin", min = 0, max = 100, default = 30, integer = true, doc = "minimum note probability" },
-	 { type = "input", name = "pmax", min = 0, max = 100, default = 100, integer = true, doc = "maximum note probability" },
-	 { type = "input", name = "pmod", min = -100, max = 100, default = 0, integer = true, doc = "automatic note probability modulation according to current pulse strength" },
-	 { type = "input", name = "hmin", min = 0, max = 100, default = 0, integer = true, doc = "minimum harmonicity" },
-	 { type = "input", name = "hmax", min = 0, max = 100, default = 100, integer = true, doc = "maximum harmonicity" },
-	 { type = "input", name = "hmod", min = -100, max = 100, default = 0, integer = true, doc = "automatic harmonicity modulation according to current pulse strength" },
-	 { type = "input", name = "pref", min = -100, max = 100, default = 100, integer = true, doc = "harmonic preference" },
-	 { type = "input", name = "prefmod", min = -100, max = 100, default = 0, integer = true, doc = "automatic harmonic preference modulation according to current pulse strength" },
-	 { type = "input", name = "smin", min = -12, max = 12, default = 1, integer = true, doc = "minimum step size" },
-	 { type = "input", name = "smax", min = -12, max = 12, default = 7, integer = true, doc = "maximum step size" },
-	 { type = "input", name = "smod", min = -100, max = 100, default = 0, integer = true, doc = "automatic step size modulation according to current pulse strength" },
-	 { type = "input", name = "nmax", min = 0, max = 10, default = 1, integer = true, doc = "maximum polyphony (number of simultaneous notes)" },
-	 { type = "input", name = "nmod", min = -100, max = 100, default = 0, integer = true, doc = "automatic modulation of the number of notes according to current pulse strength" },
-	 { type = "input", name = "uniq", min = 0, max = 1, default = 1, toggled = true, doc = "don't repeat notes in consecutive steps" },
-	 { type = "input", name = "pitchhi", min = -36, max = 36, default = 0, integer = true, doc = "extended pitch range up in semitones (raptor mode)" },
-	 { type = "input", name = "pitchlo", min = -36, max = 36, default = 0, integer = true, doc = "extended pitch range down in semitones (raptor mode)" },
-	 { type = "input", name = "pitchtracker", min = 0, max = 3, default = 0, enum = true, doc = "pitch tracker mode, follow input to adjust the pitch range (raptor mode)",
-	   scalepoints =
-	      {	["0 off"] = 0, ["1 on"] = 1, ["2 treble"] = 2, ["3 bass"] = 3 } },
-	 { type = "input", name = "loopsize", min = 0, max = 16, default = 4, integer = true, doc = "loop size (number of bars)" },
-	 { type = "input", name = "loop", min = 0, max = 1, default = 0, toggled = true, doc = "toggle loop mode" },
-	 { type = "input", name = "mute", min = 0, max = 1, default = 0, toggled = true, doc = "turn the arpeggiator off, suppress all note output" },
-      }
+   return params
 end
 
 -- This is basically a collection of presets from the Pd external, with some
@@ -1762,21 +1768,20 @@ end
 -- currently doesn't provide any direct means to select the channel or the
 -- drumkit bank, maybe we should add that in the future.)
 
-function presets()
-   return
-      {
-	 { name = "default", params = { bypass = 0, latch = 0, division = 1, pgm = 0, up = 1, down = -1, mode = 1, raptor = 0, minvel = 60, maxvel = 120, velmod = 100, gain = 100, gate = 100, gatemod = 0, pmin = 30, pmax = 100, pmod = 0, hmin = 0, hmax = 100, hmod = 0, pref = 100, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4, loop = 0, mute = 0 } },
-	 { name = "arp", params = { division = 3, pgm = 26, up = 0, down = -1, mode = 3, raptor = 1, minvel = 105, maxvel = 120, velmod = 100, gain = 50, gate = 100, gatemod = 0, pmin = 90, pmax = 100, pmod = -100, hmin = 11, hmax = 100, hmod = 0, pref = 80, prefmod = 0, smin = 2, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = -12, pitchtracker = 2, loopsize = 4 } },
-	 { name = "bass", params = { division = 3, pgm = 35, up = 0, down = -1, mode = 3, raptor = 1, minvel = 40, maxvel = 120, velmod = 100, gain = 50, gate = 100, gatemod = 0, pmin = 20, pmax = 100, pmod = 100, hmin = 12, hmax = 100, hmod = 10, pref = 80, prefmod = 10, smin = 2, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 7, pitchlo = 0, pitchtracker = 3, loopsize = 4 } },
-	 { name = "piano", params = { division = 3, pgm = 1, up = 1, down = -1, mode = 0, raptor = 1, minvel = 90, maxvel = 120, velmod = 100, gain = 50, gate = 100, gatemod = 0, pmin = 40, pmax = 100, pmod = 100, hmin = 14, hmax = 100, hmod = 10, pref = 60, prefmod = 10, smin = 2, smax = 5, smod = 0, nmax = 2, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = -18, pitchtracker = 2, loopsize = 4 } },
-	 { name = "raptor", params = { division = 3, pgm = 5, up = 1, down = -2, mode = 0, raptor = 1, minvel = 60, maxvel = 120, velmod = 100, gain = 50, gate = 100, gatemod = 0, pmin = 40, pmax = 90, pmod = 0, hmin = 9, hmax = 100, hmod = -100, pref = 100, prefmod = 100, smin = 1, smax = 7, smod = 0, nmax = 3, nmod = -100, uniq = 0, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
-	 { name = "tr808", params = { division = 3, pgm = 26, up = 0, down = 0, mode = 1, raptor = 0, minvel = 60, maxvel = 120, velmod = 100, gain = 50, gate = 100, gatemod = 0, pmin = 30, pmax = 100, pmod = 0, hmin = 0, hmax = 100, hmod = 0, pref = 100, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
-	 { name = "vibes", params = { division = 3, pgm = 12, up = 0, down = -1, mode = 3, raptor = 1, minvel = 84, maxvel = 120, velmod = 100, gain = 50, gate = 100, gatemod = 0, pmin = 90, pmax = 100, pmod = -100, hmin = 14, hmax = 100, hmod = 10, pref = 60, prefmod = 10, smin = 2, smax = 5, smod = 0, nmax = 2, nmod = 0, uniq = 1, pitchhi = -5, pitchlo = -16, pitchtracker = 2, loopsize = 4 } },
-	 { name = "weirdmod", params = { division = 3, pgm = 25, up = 0, down = -1, mode = 5, raptor = 0, minvel = 40, maxvel = 110, velmod = 50, gain = 50, gate = 100, gatemod = 50, pmin = 20, pmax = 90, pmod = 50, hmin = 0, hmax = 100, hmod = 0, pref = 100, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
-      }
-end
+local raptor_presets = {
+   { name = "default", params = { bypass = 0, latch = 0, division = 1, pgm = 0, up = 1, down = -1, mode = 1, raptor = 0, minvel = 60, maxvel = 120, velmod = 1, gain = 1, gate = 1, gatemod = 0, pmin = 0.3, pmax = 1, pmod = 0, hmin = 0, hmax = 1, hmod = 0, pref = 1, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4, loop = 0, mute = 0 } },
+   { name = "arp", params = { division = 3, pgm = 26, up = 0, down = -1, mode = 3, raptor = 1, minvel = 105, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.9, pmax = 1, pmod = -1, hmin = 0.11, hmax = 1, hmod = 0, pref = 0.8, prefmod = 0, smin = 2, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = -12, pitchtracker = 2, loopsize = 4 } },
+   { name = "bass", params = { division = 3, pgm = 35, up = 0, down = -1, mode = 3, raptor = 1, minvel = 40, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.2, pmax = 1, pmod = 1, hmin = 0.12, hmax = 1, hmod = 0.1, pref = 0.8, prefmod = 0.1, smin = 2, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 7, pitchlo = 0, pitchtracker = 3, loopsize = 4 } },
+   { name = "piano", params = { division = 3, pgm = 1, up = 1, down = -1, mode = 0, raptor = 1, minvel = 90, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.4, pmax = 1, pmod = 1, hmin = 0.14, hmax = 1, hmod = 0.1, pref = 0.6, prefmod = 0.1, smin = 2, smax = 5, smod = 0, nmax = 2, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = -18, pitchtracker = 2, loopsize = 4 } },
+   { name = "raptor", params = { division = 3, pgm = 5, up = 1, down = -2, mode = 0, raptor = 1, minvel = 60, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.4, pmax = 0.9, pmod = 0, hmin = 0.09, hmax = 1, hmod = -1, pref = 1, prefmod = 1, smin = 1, smax = 7, smod = 0, nmax = 3, nmod = -1, uniq = 0, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
+   { name = "tr808", params = { division = 3, pgm = 26, up = 0, down = 0, mode = 1, raptor = 0, minvel = 60, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.3, pmax = 1, pmod = 0, hmin = 0, hmax = 1, hmod = 0, pref = 1, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
+   { name = "vibes", params = { division = 3, pgm = 12, up = 0, down = -1, mode = 3, raptor = 1, minvel = 84, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.9, pmax = 1, pmod = -1, hmin = 0.14, hmax = 1, hmod = 0.1, pref = 0.6, prefmod = 0.1, smin = 2, smax = 5, smod = 0, nmax = 2, nmod = 0, uniq = 1, pitchhi = -5, pitchlo = -16, pitchtracker = 2, loopsize = 4 } },
+   { name = "weirdmod", params = { division = 3, pgm = 25, up = 0, down = -1, mode = 5, raptor = 0, minvel = 40, maxvel = 110, velmod = 0.5, gain = 0.5, gate = 1, gatemod = 0.5, pmin = 0.2, pmax = 0.9, pmod = 0.5, hmin = 0, hmax = 1, hmod = 0, pref = 1, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
+}
 
-local n_params = #dsp_params()
+function presets()
+   return raptor_presets
+end
 
 -- pertinent state information, to detect changes
 local last_rolling -- last transport status, to detect changes
@@ -1841,9 +1846,11 @@ function dsp_run (_, _, n_samples)
    -- detect param changes (subdiv is caught as a meter change below)
    for i = 1, n_params do
       v = ctrl[i]
-      -- We need to make sure that these are integer values. (The GUI
-      -- enforces this, but fractional values may occur through automation.)
-      v = math.floor(v)
+      if int_param[i] then
+	 -- Force integer values. (The GUI enforces this, but fractional
+	 -- values might occur through automation.)
+	 v = math.floor(v)
+      end
       if param_set[i] and v ~= last_param[i] then
 	 last_param[i] = v
 	 param_set[i](arp, v)
@@ -1987,6 +1994,17 @@ function dsp_run (_, _, n_samples)
 	 -- grab some notes from the arpeggiator
 	 arp:set_idx(p) -- in case we've changed position
 	 local notes, vel, gate, w, n = arp:pulse()
+	 -- Make sure that the gate is clamped to the 0-1 range, since we
+	 -- don't support overlapping notes in the current implementation.
+	 -- This isn't really necessary, as values outside this range
+	 -- shouldn't occur, negative values will be caught in the legato
+	 -- check below, and notes with a gate > 1 will always be cut short
+	 -- when the next pulse is due. But a little bit of defensive
+	 -- programming can't hurt. XXXTODO: Pd Raptor actually supports gate
+	 -- values > 1, so we may want to add this in the future. That will
+	 -- require additional bookkeeping and a redesign of the code handling
+	 -- the note-offs, however.
+	 gate = math.max(0, math.min(1, gate))
 	 --print(string.format("[%d] notes", p), inspect(notes), vel, gate, w, n)
 	 -- the arpeggiator may return a singleton note, make sure that it's
 	 -- always a list
