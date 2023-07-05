@@ -1699,7 +1699,14 @@ function dsp_ioconfig ()
 end
 
 function dsp_options ()
-   return { time_info = true }
+   -- NOTE: We need regular_block_length = true in this plugin to get rid of
+   -- some intricate timing issues with scheduled note-offs for gated notes
+   -- right at the end of a loop. This sometimes causes hanging notes with
+   -- automation when transport wraps around to the loop start. It's unclear
+   -- whether the issue is in Ardour (caused by split cycles with automation)
+   -- or some unkown bug in the plugin. But the option makes it go away (which
+   -- seems to indicate that the issue is on the Ardour side).
+   return { time_info = true, regular_block_length = true }
 end
 
 local hrm_scalepoints = { ["0.09 (minor 7th and 3rd)"] = 0.09, ["0.1 (major 2nd and 3rd)"] = 0.1, ["0.17 (4th)"] = 0.17, ["0.21 (5th)"] = 0.21, ["1 (unison, octave)"] = 1 }
@@ -1921,7 +1928,7 @@ function dsp_run (_, _, n_samples)
 
    if rolling and not bypass and not mute then
       -- transport is rolling, not bypassed, so the arpeggiator is playing
-      function notes_off(ts)
+      local function notes_off(ts)
 	 if last_notes then
 	    -- kill the old notes
 	    for _, num in ipairs(last_notes) do
