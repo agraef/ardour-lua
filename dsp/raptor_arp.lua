@@ -700,6 +700,7 @@ function arpeggio:new(m) -- constructor
 	 debug = 0, idx = 0, chord = {}, pattern = {},
 	 latch = nil, down = -1, up = 1, mode = 0,
 	 minvel = 60, maxvel = 120, velmod = 1,
+	 wmin = 0, wmax = 1,
 	 pmin = 0.3, pmax = 1, pmod = 0,
 	 gate = 1, gatemod = 0,
 	 veltracker = 1, minavg = nil, maxavg = nil,
@@ -729,6 +730,7 @@ function arpeggio:initialize(m)
    self.down, self.up, self.mode = -1, 1, 0
    self.minvel, self.maxvel, self.velmod = 60, 120, 1
    self.pmin, self.pmax, self.pmod = 0.3, 1, 0
+   self.wmin, self.wmax = 0, 1
    self.gate, self.gatemod = 1, 0
    -- velocity tracker
    self.veltracker, self.minavg, self.maxavg = 1, nil, nil
@@ -1114,16 +1116,24 @@ function arpeggio:pulse()
    end
    if notes ~= nil then
       -- note filtering
-      local pmin, pmax = self.pmin, self.pmax
-      -- Calculate the filter probablity. We allow for negative pmod values
-      -- here, in which case stronger pulses tend to be filtered out first
-      -- rather than weaker ones.
-      local p = mod_value(pmin, pmax, self.pmod, w1)
-      local r = math.random()
-      if self.debug&4~=0 then
-	 print(string.format("w = %g, p = %g, r = %g", w1, p, r))
+      local ok = true
+      local wmin, wmax = self.wmin, self.wmax
+      if w1 >= wmin and w1 <= wmax then
+	 local pmin, pmax = self.pmin, self.pmax
+	 -- Calculate the filter probablity. We allow for negative pmod values
+	 -- here, in which case stronger pulses tend to be filtered out first
+	 -- rather than weaker ones.
+	 local p = mod_value(pmin, pmax, self.pmod, w1)
+	 local r = math.random()
+	 if self.debug&4~=0 then
+	    print(string.format("w = %g, wmin = %g, wmax = %g, p = %g, r = %g",
+				w1, wmin, wmax, p, r))
+	 end
+	 ok = r <= p
+      else
+	 ok = false
       end
-      if r <= p then
+      if ok then
 	 -- modulated gate value
 	 gate = mod_value(0, self.gate, self.gatemod, w1)
 	 -- output notes (there may be more than one in Raptor mode)
@@ -1507,6 +1517,20 @@ function arpeggio:set_pmod(x)
    end
 end
 
+function arpeggio:set_wmin(x)
+   x = self:numarg(x)
+   if type(x) == "number" then
+      self.wmin = math.max(0, math.min(1, x))
+   end
+end
+
+function arpeggio:set_wmax(x)
+   x = self:numarg(x)
+   if type(x) == "number" then
+      self.wmax = math.max(0, math.min(1, x))
+   end
+end
+
 -- change the raptor parameters (harmonicity, etc.)
 function arpeggio:set_nmax(x)
    x = self:numarg(x)
@@ -1732,6 +1756,8 @@ local params = {
    -- 0-100% here
    { type = "input", name = "gate", min = 0, max = 1, default = 1, doc = "gate as fraction of pulse length", scalepoints = { legato = 0 } },
    { type = "input", name = "gatemod", min = -1, max = 1, default = 0, doc = "automatic gate modulation according to current pulse strength" },
+   { type = "input", name = "wmin", min = 0, max = 1, default = 0, doc = "minimum note weight" },
+   { type = "input", name = "wmax", min = 0, max = 1, default = 1, doc = "maximum note weight" },
    { type = "input", name = "pmin", min = 0, max = 1, default = 0.3, doc = "minimum note probability" },
    { type = "input", name = "pmax", min = 0, max = 1, default = 1, doc = "maximum note probability" },
    { type = "input", name = "pmod", min = -1, max = 1, default = 0, doc = "automatic note probability modulation according to current pulse strength" },
@@ -1751,6 +1777,8 @@ local params = {
    { type = "input", name = "pitchtracker", min = 0, max = 3, default = 0, enum = true, doc = "pitch tracker mode, follow input to adjust the pitch range (raptor mode)",
      scalepoints =
 	{ ["0 off"] = 0, ["1 on"] = 1, ["2 treble"] = 2, ["3 bass"] = 3 } },
+   { type = "input", name = "inchan", min = 0, max = 16, default = 0, integer = true, doc = "input channel (0 = omni = all channels)", scalepoints = { omni = 0 } },
+   { type = "input", name = "outchan", min = 0, max = 16, default = 0, integer = true, doc = "input channel (0 = omni = input channel)", scalepoints = { omni = 0 } },
    { type = "input", name = "loopsize", min = 0, max = 16, default = 4, integer = true, doc = "loop size (number of bars)" },
    { type = "input", name = "loop", min = 0, max = 1, default = 0, toggled = true, doc = "toggle loop mode" },
    { type = "input", name = "mute", min = 0, max = 1, default = 0, toggled = true, doc = "turn the arpeggiator off, suppress all note output" },
@@ -1776,14 +1804,14 @@ end
 -- drumkit bank, maybe we should add that in the future.)
 
 local raptor_presets = {
-   { name = "default", params = { bypass = 0, latch = 0, division = 1, pgm = 0, up = 1, down = -1, mode = 1, raptor = 0, minvel = 60, maxvel = 120, velmod = 1, gain = 1, gate = 1, gatemod = 0, pmin = 0.3, pmax = 1, pmod = 0, hmin = 0, hmax = 1, hmod = 0, pref = 1, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4, loop = 0, mute = 0 } },
-   { name = "arp", params = { pgm = 26, up = 0, down = -1, mode = 3, raptor = 1, minvel = 105, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.9, pmax = 1, pmod = -1, hmin = 0.11, hmax = 1, hmod = 0, pref = 0.8, prefmod = 0, smin = 2, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = -12, pitchtracker = 2, loopsize = 4 } },
-   { name = "bass", params = { pgm = 35, up = 0, down = -1, mode = 3, raptor = 1, minvel = 40, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.2, pmax = 1, pmod = 1, hmin = 0.12, hmax = 1, hmod = 0.1, pref = 0.8, prefmod = 0.1, smin = 2, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 7, pitchlo = 0, pitchtracker = 3, loopsize = 4 } },
-   { name = "piano", params = { pgm = 1, up = 1, down = -1, mode = 0, raptor = 1, minvel = 90, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.4, pmax = 1, pmod = 1, hmin = 0.14, hmax = 1, hmod = 0.1, pref = 0.6, prefmod = 0.1, smin = 2, smax = 5, smod = 0, nmax = 2, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = -18, pitchtracker = 2, loopsize = 4 } },
-   { name = "raptor", params = { pgm = 5, up = 1, down = -2, mode = 0, raptor = 1, minvel = 60, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.4, pmax = 0.9, pmod = 0, hmin = 0.09, hmax = 1, hmod = -1, pref = 1, prefmod = 1, smin = 1, smax = 7, smod = 0, nmax = 3, nmod = -1, uniq = 0, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
-   { name = "tr808", params = { pgm = 26, up = 0, down = 0, mode = 1, raptor = 0, minvel = 60, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.3, pmax = 1, pmod = 0, hmin = 0, hmax = 1, hmod = 0, pref = 1, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
-   { name = "vibes", params = { pgm = 12, up = 0, down = -1, mode = 3, raptor = 1, minvel = 84, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, pmin = 0.9, pmax = 1, pmod = -1, hmin = 0.14, hmax = 1, hmod = 0.1, pref = 0.6, prefmod = 0.1, smin = 2, smax = 5, smod = 0, nmax = 2, nmod = 0, uniq = 1, pitchhi = -5, pitchlo = -16, pitchtracker = 2, loopsize = 4 } },
-   { name = "weirdmod", params = { pgm = 25, up = 0, down = -1, mode = 5, raptor = 0, minvel = 40, maxvel = 110, velmod = 0.5, gain = 0.5, gate = 1, gatemod = 0.5, pmin = 0.2, pmax = 0.9, pmod = 0.5, hmin = 0, hmax = 1, hmod = 0, pref = 1, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
+   { name = "default", params = { bypass = 0, latch = 0, division = 1, pgm = 0, up = 1, down = -1, mode = 1, raptor = 0, minvel = 60, maxvel = 120, velmod = 1, gain = 1, gate = 1, gatemod = 0, wmin = 0, wmax = 1, pmin = 0.3, pmax = 1, pmod = 0, hmin = 0, hmax = 1, hmod = 0, pref = 1, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, inchan = 0, outchan = 0, loopsize = 4, loop = 0, mute = 0 } },
+   { name = "arp", params = { pgm = 26, up = 0, down = -1, mode = 3, raptor = 1, minvel = 105, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, wmin = 0, wmax = 1, pmin = 0.9, pmax = 1, pmod = -1, hmin = 0.11, hmax = 1, hmod = 0, pref = 0.8, prefmod = 0, smin = 2, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = -12, pitchtracker = 2, loopsize = 4 } },
+   { name = "bass", params = { pgm = 35, up = 0, down = -1, mode = 3, raptor = 1, minvel = 40, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, wmin = 0, wmax = 1, pmin = 0.2, pmax = 1, pmod = 1, hmin = 0.12, hmax = 1, hmod = 0.1, pref = 0.8, prefmod = 0.1, smin = 2, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 7, pitchlo = 0, pitchtracker = 3, loopsize = 4 } },
+   { name = "piano", params = { pgm = 1, up = 1, down = -1, mode = 0, raptor = 1, minvel = 90, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, wmin = 0, wmax = 1, pmin = 0.4, pmax = 1, pmod = 1, hmin = 0.14, hmax = 1, hmod = 0.1, pref = 0.6, prefmod = 0.1, smin = 2, smax = 5, smod = 0, nmax = 2, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = -18, pitchtracker = 2, loopsize = 4 } },
+   { name = "raptor", params = { pgm = 5, up = 1, down = -2, mode = 0, raptor = 1, minvel = 60, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, wmin = 0, wmax = 1, pmin = 0.4, pmax = 0.9, pmod = 0, hmin = 0.09, hmax = 1, hmod = -1, pref = 1, prefmod = 1, smin = 1, smax = 7, smod = 0, nmax = 3, nmod = -1, uniq = 0, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
+   { name = "tr808", params = { pgm = 26, up = 0, down = 0, mode = 1, raptor = 0, minvel = 60, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, wmin = 0, wmax = 1, pmin = 0.3, pmax = 1, pmod = 0, hmin = 0, hmax = 1, hmod = 0, pref = 1, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
+   { name = "vibes", params = { pgm = 12, up = 0, down = -1, mode = 3, raptor = 1, minvel = 84, maxvel = 120, velmod = 1, gain = 0.5, gate = 1, gatemod = 0, wmin = 0, wmax = 1, pmin = 0.9, pmax = 1, pmod = -1, hmin = 0.14, hmax = 1, hmod = 0.1, pref = 0.6, prefmod = 0.1, smin = 2, smax = 5, smod = 0, nmax = 2, nmod = 0, uniq = 1, pitchhi = -5, pitchlo = -16, pitchtracker = 2, loopsize = 4 } },
+   { name = "weirdmod", params = { pgm = 25, up = 0, down = -1, mode = 5, raptor = 0, minvel = 40, maxvel = 110, velmod = 0.5, gain = 0.5, gate = 1, gatemod = 0.5, wmin = 0, wmax = 1, pmin = 0.2, pmax = 0.9, pmod = 0.5, hmin = 0, hmax = 1, hmod = 0, pref = 1, prefmod = 0, smin = 1, smax = 7, smod = 0, nmax = 1, nmod = 0, uniq = 1, pitchhi = 0, pitchlo = 0, pitchtracker = 0, loopsize = 4 } },
 }
 
 function presets()
@@ -1799,11 +1827,12 @@ local last_mute -- last mute toggle
 -- previous param values, to detect changes
 local last_param = {}
 
--- pertinent note information, to handle note output
+-- pertinent note information, to handle note input and output
 local chan = 0 -- MIDI (input and) output channel
 local last_notes -- last notes played
 local last_chan -- MIDI channel of the last notes
 local off_gate -- off time of last notes (sample time)
+local inchan, outchan, pgm = 0, 0, 0
 
 -- create the arpeggiator (default meter)
 local last_m = 4 -- last division, to detect changes
@@ -1823,7 +1852,20 @@ local function arp_set_loopsize(self, x)
    self:set_loopsize(x*arp.beats)
 end
 
-local param_set = { nil, nil, nil, arp.set_latch, arp.set_up, arp.set_down, arp.set_mode, arp.set_raptor, arp.set_minvel, arp.set_maxvel, arp.set_velmod, arp.set_gain, arp.set_gate, arp.set_gatemod, arp.set_pmin, arp.set_pmax, arp.set_pmod, arp.set_hmin, arp.set_hmax, arp.set_hmod, arp.set_pref, arp.set_prefmod, arp.set_smin, arp.set_smax, arp.set_smod, arp.set_nmax, arp.set_nmod, arp.set_uniq, arp.set_pitchhi, arp.set_pitchlo, arp.set_pitchtracker, arp_set_loopsize, arp.set_loop, nil }
+local param_set = { nil, nil, function (_, x) pgm = x end, arp.set_latch, arp.set_up, arp.set_down, arp.set_mode, arp.set_raptor, arp.set_minvel, arp.set_maxvel, arp.set_velmod, arp.set_gain, arp.set_gate, arp.set_gatemod, arp.set_wmin, arp.set_wmax, arp.set_pmin, arp.set_pmax, arp.set_pmod, arp.set_hmin, arp.set_hmax, arp.set_hmod, arp.set_pref, arp.set_prefmod, arp.set_smin, arp.set_smax, arp.set_smod, arp.set_nmax, arp.set_nmod, arp.set_uniq, arp.set_pitchhi, arp.set_pitchlo, arp.set_pitchtracker, function (_, x) inchan = x end, function (_, x) outchan = x end, arp_set_loopsize, arp.set_loop, nil }
+
+local function get_chan(ch)
+   if outchan == 0 and inchan > 0 then
+      ch = inchan-1 -- outchan == inchan > 0 override
+   elseif outchan > 0 then
+      ch = outchan-1 -- outchan > 0 override
+   end
+   return ch
+end
+
+local function check_chan(ch)
+   return inchan == 0 or ch == inchan-1
+end
 
 function dsp_run (_, _, n_samples)
    assert (type(midiout) == "table")
@@ -1843,15 +1885,9 @@ function dsp_run (_, _, n_samples)
    -- errorneously slip through before playback really starts.
    local rolling = Session:transport_state_rolling ()
 
-   local k = 1
-   param_set[3] = function (_, x)
-      if x > 0 then
-	 midiout[k] = { time = 1, data = { 0xc0+chan, x-1 } }
-	 k = k+1
-      end
-   end
-
    -- detect param changes (subdiv is caught as a meter change below)
+   local last_pgm = pgm
+   local last_inchan = inchan
    for i = 1, n_params do
       v = ctrl[i]
       if int_param[i] then
@@ -1887,10 +1923,26 @@ function dsp_run (_, _, n_samples)
       end
    end
 
+   if inchan ~= last_inchan and inchan > 0 then
+      -- input channel has changed, kill off chord memory
+      arp:panic()
+      all_notes_off = true
+   end
+
+   local k = 1
    if all_notes_off then
       --print("all-notes-off", chan)
       midiout[k] = { time = 1, data = { 0xb0+chan, 123, 0 } }
       k = k+1
+   end
+
+   if pgm ~= last_pgm or get_chan(chan) ~= chan then
+      -- program or output channel has changed, send the program change
+      chan = get_chan(chan)
+      if pgm > 0 then
+	 midiout[k] = { time = 1, data = { 0xc0+chan, pgm-1 } }
+	 k = k+1
+      end
    end
 
    for _,ev in ipairs (midiin) do
@@ -1920,16 +1972,20 @@ function dsp_run (_, _, n_samples)
 	 end
       end
       if status == 0x80 or status == 0x90 and val == 0 then
-	 if debug >= 4 then
-	    print("note off", num, val)
+	 if check_chan(ch) then
+	    if debug >= 4 then
+	       print("note off", num, val)
+	    end
+	    arp:note(num, 0)
 	 end
-	 arp:note(num, 0)
       elseif status == 0x90 then
-	 if debug >= 4 then
-	    print("note on", num, val, "ch", ch)
+	 if check_chan(ch) then
+	    if debug >= 4 then
+	       print("note on", num, val, "ch", ch)
+	    end
+	    arp:note(num, val)
+	    chan = get_chan(ch)
 	 end
-	 arp:note(num, val)
-	 chan = ch
       elseif not rolling and status == 0xb0 and num == 123 and ch == chan then
 	 -- This disrupts the arpeggiator during playback, so we only process
 	 -- these messages (generated by Ardour to prevent hanging notes when
