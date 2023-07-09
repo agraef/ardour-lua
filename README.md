@@ -28,7 +28,7 @@ These are MIDI effects which go as a plugin into a MIDI track. Currently the fol
 
 Sadly, Clarence Barlow passed away at the end of June 2023. The barlow_arp and raptor_arp plugins are dedicated to his memory. This is quite fitting since the original versions of these programs were developed in close collaboration with him. Rest in peace, Clarence.
 
-### Using the Arpeggiators
+## Using the Arpeggiators
 
 Here is a brief introduction to the simple_arp and barlow_arp plugins. (The raptor_lua plugin is discussed in its own section below. It can be used in a similar fashion, but has a lot more parameters.)
 
@@ -42,13 +42,13 @@ Simply place the arpeggiator you prefer on a MIDI track, usually right in front 
 - **Gate**: Sets the length of notes as a fraction (0-1 range value) of the note division. Decreasing the value gives increasingly shorter staccato notes; a value of 1 means legato. The zero gate value (which wouldn't normally be terribly useful as it would indicate zero-length notes) is special. It *also* indicates legato and can thus be used just like a gate of 1, but also has a special meaning as "forced legato" in conjunction with the pulse filter of the Barlow Arpeggiator, see below.
 - **Swing**: This is the customary swing control found on many hardware instruments which lets you specify the swing amount as a fraction ranging from 0.5 (no swing) to 0.75; 0.67 gives a triplet feel. This control is only available in the Simple Arpeggiator, but the Barlow Arpeggiator lets you create a triplet feel with a pulse filter instead, see below.
 
-#### Note Velocities
+### Note Velocities
 
 Both arpeggiators generate full-scale note velocities no matter what the input velocities are. The Simple Arpeggiator lets you select three different velocity levels for bar, beat and subdivision steps (**Velocity 1-3**).
 
 The Barlow Arpeggiator uses a more sophisticated scheme which assigns a unique pulse strength to each step in a bar and lets you determine the output velocity range (**Min** and **Max Velocity**). Thus each step gets its unique velocity value in accordance with the current time signature and number of subdivisions. (The Min and Max values can also be reversed in order to get lower velocities for higher pulse strengths and vice versa.)
 
-#### Step Filters
+### Step Filters
 
 The Barlow Arpeggiator also lets you filter notes by pulse strengths with the **Min** and **Max Filter** values. (This is made possible by the way unique pulse strengths are computed for each step. The Simple Arpeggiator doesn't have this feature, but offers a more traditional swing control instead.)
 
@@ -56,11 +56,11 @@ Raising the minimum strength gradually thins out the note sequence while retaini
 
 Note that by default, the pulse filter will produce a rest for each skipped step, but you can also set the gate control to 0 to force each note to extend across the skipped steps instead. (This special "forced legato" gate setting will only make a difference in the Barlow Arpeggiator, and only if the pulse filter is active. Otherwise the 0 gate value has the same effect as a gate of 1.)
 
-#### Factory Presets
+### Factory Presets
 
 Both arpeggiators include some factory presets for illustration purposes, these can be selected from the presets dropdown in Ardour's plugin dialog as usual. (This needs Ardour 7.5-78 or later to work.) The list is still rather short at the time of this writing, so contributions are appreciated. If you have any cool presets that you might want to share, please let me know.
 
-### Using Raptor
+## Using Raptor
 
 A complete description of the raptor_arp arpeggiator is beyond the scope of this README, so please check https://github.com/agraef/raptor-lua for the Pd version of this program, which offers extensive information on the Raptor algorithm and its features.
 
@@ -70,14 +70,14 @@ In the following we give an overview of the available controls. In Ardour, the c
 
 Ranges are given in parentheses. Continuous values use the 0 - 1 or -1 - +1 range and can be arbitrary floating point values. These generally denote probabilities or other normalized values (such as indispensabilities, harmonicities, and modulation values) expressed as percentages; some of these (in particular, the modulation parameters) can also be negative to reverse polarity. Switches are denoted 0/1 (off/on). Other ranges denote integer values, such as MIDI note or channel numbers, or enumerations such as the pattern and pitch tracker modes.
 
-#### MIDI Controls
+### MIDI Controls
 
 These controls let you change the MIDI program and the MIDI channels for input and output.
 
 - pgm (0-128): Sets the MIDI program (instrument sound) of a connected synthesizer. pgm = 0 (the default) means no change, otherwise a MIDI program change message is sent to the output channel.
 - inchan, outchan (0-16): Sets the MIDI input and output channels. inchan = 0 (omni) means that notes on all channels will be received, otherwise MIDI input on all other channels will be ignored. outchan = 0 means that output goes to the input channel; otherwise it goes to the given MIDI channel. The default is inchan = outchan = 0, which means that MIDI input will be received on all channels and output goes to the last channel on which input was received. This is usually what you want, but setting the inchan lets you distinguish input from different MIDI controllers, and you may want to set outchan if different Raptor instances emit notes which are then routed to the same multitimbral instrument.
 
-#### Arpeggiator Modes
+### Arpeggiator Modes
 
 These controls are 0/1 switches which control various global modes of the arpeggiator.
 
@@ -85,7 +85,7 @@ These controls are 0/1 switches which control various global modes of the arpegg
 - raptor (0/1): Toggles raptor mode, which enables additional functionality (see Raptor Controls below).
 - loop (0/1), loopsize (0-16): This engages Raptor's built-in looper which repeats the last few bars of output from the arpeggiator. The loopsize control specifies the number of bars to loop. If input runs short then the looper will use what it has, but it needs at least one complete bar to commence loop playback. You can toggle the loop control at any time and it will switch between loop playback and arpeggiator output immediately. This can be handy if you want to loop a few bars created with the arpeggiator, e.g., to record that precious pattern before it vanishes forever, or if you need your hands free to play a solo on a different track.
 
-#### Arpeggiator Controls
+### Arpeggiator Controls
 
 These controls are always in effect, i.e., no matter whether raptor mode is on or off. The modulation controls (velmod, gatemod, pmod) vary the corresponding parameters according to normalized pulse weights (i.e., indispensabilities) of the current step. These values can also be negative which reverses polarity. E.g., velmod = 1 means that the note velocity varies from minvel to maxvel, *increasing* with the pulse weight, whereas velmod = -1 varies the velocities from maxvel to minvel, *decreasing* with the weight. If velmod = 0, then the velocity remains constant at the maxvel value. The other modulation controls work in an analogous fashion.
 
@@ -98,7 +98,7 @@ These controls are always in effect, i.e., no matter whether raptor mode is on o
 - wmin, wmax (0-1): Deterministic pulse filter (same as in barlow_arp). Pulses with a weight outside the given wmin - wmax range will be filtered out.
 - pmin, pmax (0-1), pmod (-1 - +1): Probabilistic pulse filter. The given minimum and maximum probability values along with the corresponding modulation determine through a random choice whether a pulse produces any notes. You can disable this by setting pmax = 1 and pmod = 0 (which are the defaults).
 
-#### Raptor Controls
+### Raptor Controls
 
 These controls only affect the arpeggiator if it runs in raptor mode.The modulation controls (hmod, prefmod, smod, nmod) work as described above to vary the corresponding parameter with the pulse weight of the current step. The controls filter and order candidate output notes according to various criteria, which determines which notes are eventually output by the arpeggiator in each step.
 
