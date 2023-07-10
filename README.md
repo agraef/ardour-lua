@@ -1,8 +1,10 @@
 # Ardour Lua Scripts
 
-Here are some Lua scripts I wrote for an Ardour course. These require a fairly recent Ardour version (tested with Ardour 7.4 and 7.5). Note that the arpeggiator plugins (*_arp.lua) need Ardour 7.5 or later, since they rely on the [new time_info data](https://discourse.ardour.org/t/lua-arpeggiator-plugin-anyone/108862) for dsp scripts.
+Here are some Lua scripts I wrote for an Ardour course. These require a fairly recent Ardour version. Ardour 7.4 should be sufficient to run the action plugins. The dsp plugins need Ardour 7.5 or later, however, since they rely on the [new time_info data](https://discourse.ardour.org/t/lua-arpeggiator-plugin-anyone/108862). Until Ardour 7.6 comes out, we recommend using the latest git version of Ardour which has some important bugfixes and new features in the Lua interface for dsp plugins.
 
-Documentation still needs to be written for the most part, so you'll have to take a look at the scripts themselves for further details. Below is a quick rundown of the scripts that are currently available. Please note that the action and dsp scripts can be found in corresponding subdirectories.
+There is some documentation below, but admittedly it is a bit sketchy at present, so you may want to take a look at the scripts themselves for further details. Below is a quick rundown of the scripts that are currently available, and we also added some more detailed instructions for the arpeggiator dsp plugins, which Ardour users will probably find most interesting.
+
+The action and dsp scripts can be found in corresponding subdirectories of the repository, and a few sample Ardour 7.5 sessions for the arpeggiators can be found in the examples subdirectory.
 
 ## Action Scripts
 
