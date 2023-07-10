@@ -6,6 +6,8 @@ There is some documentation below, but admittedly it is a bit sketchy at present
 
 The action and dsp scripts can be found in corresponding subdirectories of the repository, and a few sample Ardour 7.5 sessions for the arpeggiators can be found in the examples subdirectory.
 
+To install the scripts, you need to copy them to an OS-specific location which is searched by Ardour for Lua script files (~/.config/ardour7/scripts on Linux, ~/Library/Preferences/Ardour7/scripts on macOS, %localappdata%\ardour7\scripts on Windows). Please also check the [Ardour manual](https://manual.ardour.org/lua-scripting/) for information on Lua scripting in Ardour.
+
 ## Action Scripts
 
 These are some helper scripts, mostly for doing twelve-tone music and similar serial stuff. They generally take a selected MIDI region as input.
