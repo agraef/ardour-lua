@@ -4,15 +4,11 @@ ardour {
    category    = "Effect",
    author      = "Albert Gräf",
    license     = "GPL",
-   description = [[Raptor: The Random Arpeggiator
+   description = [[Raptor: The Random Arpeggiator (Raptor 6, Ardour implementation v0.3)
+
+Advanced arpeggiator with random note generation, harmonic controls, input pitch and velocity tracking, and automatic modulation of various parameters.
 
 In memory of Clarence Barlow (27 December 1945 – 29 June 2023).
-
-Raptor is quite advanced as arpeggiators go, it's really a full-blown algorithmic composition tool based on Barlow's theories on harmony and rhythm, although it offers the usual run-of-the-mill deterministic and random arpeggios as well. But the real magic starts when you turn on raptor mode and start playing around with the controls.
-
-Check the tooltips on the controls for an explanation of the various parameters, or try one of the included factory presets. Disabling raptor mode engages a more traditional arpeggiator which sticks to the chords you play. (This is also the default.)
-
-If feeding the Raptor with input becomes too stressful, try latch mode. It memorizes the notes you played after releasing keys, which makes changing chords much easier.
 ]]
 }
 

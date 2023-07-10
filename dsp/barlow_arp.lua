@@ -4,21 +4,11 @@ ardour {
    category    = "Effect",
    author      = "Albert Gräf",
    license     = "GPL",
-   description = [[Simple monophonic arpeggiator example with sample-accurate triggering and velocities computed using Barlow's indispensability formula. This automatically adjusts to the current time signature and division to produce rhythmic accents in accordance with the meter by varying the note velocities in a given range.
+   description = [[barlow_arp v0.3
+
+Simple monophonic arpeggiator example with sample-accurate triggering and velocities computed using Barlow's indispensability formula. This automatically adjusts to the current time signature and division to produce rhythmic accents in accordance with the meter by varying the note velocities in a given range.
 
 In memory of Clarence Barlow (27 December 1945 – 29 June 2023).
-
-Explanation of the controls:
-
-- Division: Number of pulses to subdivide the meter as given by the time signature.
-- Octave up/down: Sets the octave range for the output.
-- Pattern: Choose any of the usual arpeggiator patterns (up, down, random, etc.).
-- Min and Max Velocity: Range for automatic note velocities.
-- Min and Max Filter: Pulse strength filter: Pulses outside the given pulse strength range (normalized values between 0 and 1) will be skipped.
-- Gate: Note length as a fraction (0..1 value) of the note division.
-- Latch: Enable latch mode (keep playing with no input).
-- Sync: Synchronize pattern playback with bars and beats.
-- Bypass: Bypass the arpeggiator and pass through the input notes.
 ]]
 }
 
@@ -53,20 +43,20 @@ end
 function dsp_params ()
    return
       {
-	 { type = "input", name = "Division", min = 1, max = 7, default = 1, integer = true },
-	 { type = "input", name = "Octave up", min = 0, max = 5, default = 0, integer = true },
-	 { type = "input", name = "Octave down", min = 0, max = 5, default = 0, integer = true },
-	 { type = "input", name = "Pattern", min = 1, max = 6, default = 1, integer = true,
+	 { type = "input", name = "Division", min = 1, max = 7, default = 1, integer = true, doc = "number of subdivisions of the beat" },
+	 { type = "input", name = "Octave up", min = 0, max = 5, default = 0, integer = true, doc = "octave range up" },
+	 { type = "input", name = "Octave down", min = 0, max = 5, default = 0, integer = true, doc = "octave range down" },
+	 { type = "input", name = "Pattern", min = 1, max = 6, default = 1, integer = true, doc = "pattern style",
 	   scalepoints =
 	      {	["1 up"] = 1, ["2 down"] = 2, ["3 exclusive"] = 3, ["4 inclusive"] = 4, ["5 order"] = 5, ["6 random"] = 6 } },
-	 { type = "input", name = "Min Velocity", min = 0, max = 127, default = 60, integer = true },
-	 { type = "input", name = "Max Velocity", min = 0, max = 127, default = 120, integer = true },
-	 { type = "input", name = "Min Filter", min = 0, max = 1, default = 0 },
-	 { type = "input", name = "Max Filter", min = 0, max = 1, default = 1 },
-	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true },
-	 { type = "input", name = "Sync", min = 0, max = 1, default = 0, toggled = true },
-	 { type = "input", name = "Bypass", min = 0, max = 1, default = 0, toggled = true },
-	 { type = "input", name = "Gate", min = 0, max = 1, default = 1, scalepoints = { legato = 0 } },
+	 { type = "input", name = "Min Velocity", min = 0, max = 127, default = 60, integer = true, doc = "minimum velocity" },
+	 { type = "input", name = "Max Velocity", min = 0, max = 127, default = 120, integer = true, doc = "maximum velocity" },
+	 { type = "input", name = "Min Filter", min = 0, max = 1, default = 0, doc = "minimum pulse strength" },
+	 { type = "input", name = "Max Filter", min = 0, max = 1, default = 1, doc = "maximum pulse strength" },
+	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true, doc = "toggle latch mode" },
+	 { type = "input", name = "Sync", min = 0, max = 1, default = 0, toggled = true, doc = "toggle sync mode" },
+	 { type = "input", name = "Bypass", min = 0, max = 1, default = 0, toggled = true, doc = "bypass the arpeggiator, pass through input notes" },
+	 { type = "input", name = "Gate", min = 0, max = 1, default = 1, doc = "gate as fraction of pulse length", scalepoints = { legato = 0 } },
       }
 end
 

@@ -4,19 +4,9 @@ ardour {
    category    = "Effect",
    author      = "Albert Gräf",
    license     = "MIT",
-   description = [[Simple monophonic arpeggiator example with sample-accurate triggering, demonstrates how to process the new time_info data along with BBT info from Ardour's tempo map.
+   description = [[simple_arp v0.3
 
-Explanation of the controls:
-
-- Division: Number of pulses to subdivide the meter as given by the time signature.
-- Octave up/down: Sets the octave range for the output.
-- Pattern: Choose any of the usual arpeggiator patterns (up, down, random, etc.).
-- Velocity 1-3: Automatic note velocities for the different beat levels (bar, beat, subdivision pulse).
-- Gate: Note length as a fraction (0..1 value) of the note division.
-- Swing: Swing value as a fraction ranging from 0.5 (no swing) to 0.75. Triplet feel is at 0.67.
-- Latch: Enable latch mode (keep playing with no input).
-- Sync: Synchronize pattern playback with bars and beats.
-- Bypass: Bypass the arpeggiator and pass through the input notes.
+Simple monophonic arpeggiator example with sample-accurate triggering, demonstrates how to process the new time_info data along with BBT info from Ardour's tempo map.
 ]]
 }
 
@@ -83,20 +73,20 @@ end
 function dsp_params ()
    return
       {
-	 { type = "input", name = "Division", min = 1, max = 16, default = 1, integer = true },
-	 { type = "input", name = "Octave up", min = 0, max = 5, default = 0, integer = true },
-	 { type = "input", name = "Octave down", min = 0, max = 5, default = 0, integer = true },
-	 { type = "input", name = "Pattern", min = 1, max = 6, default = 1, integer = true,
+	 { type = "input", name = "Division", min = 1, max = 16, default = 1, integer = true, doc = "number of subdivisions of the beat" },
+	 { type = "input", name = "Octave up", min = 0, max = 5, default = 0, integer = true, doc = "octave range up" },
+	 { type = "input", name = "Octave down", min = 0, max = 5, default = 0, integer = true, doc = "octave range down" },
+	 { type = "input", name = "Pattern", min = 1, max = 6, default = 1, integer = true, doc = "pattern style",
 	   scalepoints =
 	      {	["1 up"] = 1, ["2 down"] = 2, ["3 exclusive"] = 3, ["4 inclusive"] = 4, ["5 order"] = 5, ["6 random"] = 6 } },
-	 { type = "input", name = "Velocity 1", min = 0, max = 127, default = 100, integer = true },
-	 { type = "input", name = "Velocity 2", min = 0, max = 127, default = 80, integer = true },
-	 { type = "input", name = "Velocity 3", min = 0, max = 127, default = 60, integer = true },
-	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true },
-	 { type = "input", name = "Sync", min = 0, max = 1, default = 0, toggled = true },
-	 { type = "input", name = "Bypass", min = 0, max = 1, default = 0, toggled = true },
-	 { type = "input", name = "Gate", min = 0, max = 1, default = 1, scalepoints = { legato = 0 } },
-	 { type = "input", name = "Swing", min = 0.5, max = 0.75, default = 0.5 },
+	 { type = "input", name = "Velocity 1", min = 0, max = 127, default = 100, integer = true, doc = "velocity level (bar)" },
+	 { type = "input", name = "Velocity 2", min = 0, max = 127, default = 80, integer = true, doc = "velocity level (beat)" },
+	 { type = "input", name = "Velocity 3", min = 0, max = 127, default = 60, integer = true, doc = "velocity level (subdivision)" },
+	 { type = "input", name = "Latch", min = 0, max = 1, default = 0, toggled = true, doc = "toggle latch mode" },
+	 { type = "input", name = "Sync", min = 0, max = 1, default = 0, toggled = true, doc = "toggle sync mode" },
+	 { type = "input", name = "Bypass", min = 0, max = 1, default = 0, toggled = true, doc = "bypass the arpeggiator, pass through input notes" },
+	 { type = "input", name = "Gate", min = 0, max = 1, default = 1, doc = "gate as fraction of pulse length", scalepoints = { legato = 0 } },
+	 { type = "input", name = "Swing", min = 0.5, max = 0.75, default = 0.5, doc = "swing factor (0.67 = triplet feel)" },
       }
 end
 
