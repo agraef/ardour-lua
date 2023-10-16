@@ -1,12 +1,10 @@
 # Ardour Lua Scripts
 
-Here are some Lua scripts I wrote for an Ardour course. These require a fairly recent Ardour version. Ardour 7.4 should be sufficient to run the action plugins. The dsp plugins need Ardour 7.5 or later, however, since they rely on the [new time_info data](https://discourse.ardour.org/t/lua-arpeggiator-plugin-anyone/108862). Until Ardour 7.6 comes out, we recommend using the latest git version of Ardour which has some important bugfixes and new features in the Lua interface for dsp plugins.
+Here are some Lua scripts I wrote for an Ardour course in the summer of 2023. These require a fairly recent Ardour version. Ardour 7.4 should be sufficient to run the action plugins. The dsp plugins need Ardour 8.0 or later, however, since they rely on the [new time_info data](https://discourse.ardour.org/t/lua-arpeggiator-plugin-anyone/108862).
 
 There is some documentation below, but admittedly it is a bit sketchy at present, so you may want to take a look at the scripts themselves for further details. Below is a quick rundown of the scripts that are currently available, and we also added some more detailed instructions for the arpeggiator dsp plugins, which Ardour users will probably find most interesting.
 
-The action and dsp scripts can be found in corresponding subdirectories of the repository, and a few sample Ardour 7.5 sessions for the arpeggiators can be found in the examples subdirectory.
-
-To install the scripts, you need to copy them to an OS-specific location which is searched by Ardour for Lua script files (~/.config/ardour7/scripts on Linux, ~/Library/Preferences/Ardour7/scripts on macOS, %localappdata%\ardour7\scripts on Windows). Please also check the [Ardour manual](https://manual.ardour.org/lua-scripting/) for information on Lua scripting in Ardour.
+The action and dsp scripts can be found in corresponding subdirectories of the repository, and a few sample Ardour sessions for the arpeggiators can be found in the examples subdirectory.
 
 ## Action Scripts
 
@@ -20,7 +18,10 @@ These are some helper scripts, mostly for doing twelve-tone music and similar se
 
 - tonleiter.lua: This is similar to reihe.lua, but lets you create different kinds of scales which you can choose from a dialog. (This is still unfinished, please send me a PR if you have other interesting scales to add.)
 
-- meter.lua: This takes an existing note sequence, assigns pulse strengths to notes and maps these to note velocities and/or probabilities. The pulse strengths are computed using the time signature from the Ardour tempo map, by applying a formula by the contemporary composer Clarence Barlow which can deal with meters of any kind; please check the script for details.
+- meter.lua: This takes an existing note sequence, assigns pulse strengths to notes and maps these to note velocities and/or probabilities. The pulse strengths are computed using the time signature from the Ardour tempo map, by applying a formula by the composer Clarence Barlow which can deal with meters of any kind; please check the script for details.
+
+
+To install the action scripts, you need to copy them to an OS-specific location which is searched by Ardour for Lua script files (~/.config/ardour8/scripts on Linux, ~/Library/Preferences/Ardour8/scripts on macOS, %localappdata%\ardour8\scripts on Windows). Please also check the [Ardour manual](https://manual.ardour.org/lua-scripting/) for information on Lua scripting in Ardour.
 
 ## DSP Scripts
 
@@ -31,6 +32,8 @@ These are MIDI effects which go as a plugin into a MIDI track. Currently the fol
 - raptor_arp.lua: This is a much more advanced arpeggiator based on Barlow's comprehensive theories of harmony and meter. It is really a full-blown algorithmic composition program in disguise. Note that the barlow_arp plugin is a much simpler program which only implements some of the basic features of the full Raptor program, but it's also much easier to use.
 
 Sadly, Clarence Barlow passed away at the end of June 2023. The barlow_arp and raptor_arp plugins are dedicated to his memory. This is quite fitting since the original versions of these programs were developed in close collaboration with him. Rest in peace, Clarence.
+
+The three arpeggiators are all included in Ardour 8.0, so there's no need to install them; if you have Ardour 8.0 or later installed, you should be able to find them in Ardour's plugin browser.
 
 ## Using the Arpeggiators
 
@@ -62,7 +65,7 @@ Note that by default, the pulse filter will produce a rest for each skipped step
 
 ### Factory Presets
 
-Both arpeggiators include some factory presets for illustration purposes, these can be selected from the presets dropdown in Ardour's plugin dialog as usual. (This needs Ardour 7.5-78 or later to work.) The list is still rather short at the time of this writing, so contributions are appreciated. If you have any cool presets that you might want to share, please let me know.
+Both arpeggiators include some factory presets for illustration purposes, these can be selected from the presets dropdown in Ardour's plugin dialog as usual. The list is still rather short at the time of this writing, so contributions are appreciated. If you have any cool presets that you might want to share, please let me know.
 
 ## Using Raptor
 
